@@ -1,22 +1,13 @@
 #!/bin/bash
 # Publie sabaki + tous les plugins sur npm (public).
-# Requiert : un token automation npm avec droits publish.
-# Usage : NPM_TOKEN=npm_xxx ./scripts/publish-all.sh
+# Auth interactive : ouvre le lien affiché, autorise l'IP (5 min), reviens ici.
+# Usage : ./scripts/publish-all.sh
 set -euo pipefail
 
-if [ -z "${NPM_TOKEN:-}" ]; then
-  echo "NPM_TOKEN manquant. Créez un automation token sur npmjs.com (publish sur sabaki + @sabaki-js/*)." >&2
-  exit 1
-fi
-
-export NPM_CONFIG_TOKEN="$NPM_TOKEN"
-echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc.tmp-publish
-NPMRC_BACKUP=""
-if [ -f ~/.npmrc ]; then
-  NPMRC_BACKUP=$(cat ~/.npmrc)
-fi
-cp ~/.npmrc.tmp-publish ~/.npmrc
-trap 'if [ -n "$NPMRC_BACKUP" ]; then printf "%s" "$NPMRC_BACKUP" > ~/.npmrc; else rm -f ~/.npmrc; fi; rm -f ~/.npmrc.tmp-publish' EXIT
+echo "=== 1. Authentification npm (web) ==="
+echo "Ouvrez le lien ci-dessous, autorisez l'IP, puis revenez ici."
+npm login --auth-type=web
+echo "authentifié : $(npm whoami)"
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 # Le core d'abord (les plugins en dépendent comme peer).
