@@ -1,0 +1,30 @@
+{
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "off"
+			}
+		}
+	},
+	"linter": {
+		"rules": {
+			"suspicious": {
+				"noDebugger": "off"
+			},
+			"style": {
+				"noShoutyConstants": "warn",
+				"useNamingConvention": "off",
+				"noNonNullAssertion": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"attributePosition": "auto",
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 80,
+		"lineEnding": "lf"
+	}
+}

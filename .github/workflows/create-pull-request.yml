@@ -1,0 +1,85 @@
+name: Auto Create Pull Request
+
+on:
+  push:
+    branches:
+
+jobs:
+  create-pull-request:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull request token
+        env:
+          AUTO_PR_TOKEN: ${{ secrets.AUTO_PR_TOKEN }}
+        run: |
+          if [ -z "$AUTO_PR_TOKEN" ]; then
+            echo "AUTO_PR_TOKEN is required to create pull requests from GitHub Actions. Use a PAT or GitHub App token with contents:write and pull-requests:write."
+            exit 1
+          fi
+
+      - name: Create pull request if none exists
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.AUTO_PR_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sourceBranch = context.ref.startsWith('refs/heads/')
+              ? context.ref.slice('refs/heads/'.length)
+              : context.ref;
+            const head = `${owner}:${sourceBranch}`;
+            const base = 'main';
+
+            // Check if there are commits between main and the current branch
+            const { data: comparison } = await github.rest.repos.compareCommits({
+              owner,
+              repo,
+              base: 'main',
+              head: sourceBranch,
+            }).catch(err => {
+              if (err.status === 404 && err.message.includes('No commits')) {
+                core.info('No commits between main and ' + sourceBranch + ' - skipping PR creation');
+                return { data: { ahead_by: 0 } };
+              }
+              throw err;
+            });
+
+            if (comparison.ahead_by === 0) {
+              core.info('Branches are identical - no pull request needed');
+              return;
+            }
+
+            const { data: existingPullRequests } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head,
+              base,
+            });
+
+            if (existingPullRequests.length > 0) {
+              core.info(`Pull request already exists: #${existingPullRequests[0].number}`);
+              return;
+            }
+
+            const { data: pullRequest } = await github.rest.pulls.create({
+              owner,
+              repo,
+              head: sourceBranch,
+              base,
+              title: `chore: auto PR from ${sourceBranch} to main`,
+              body: [
+                'This pull request was created automatically by GitHub Actions.',
+                '',
+                `- source branch: \`${sourceBranch}\``,
+                `- target branch: \`main\``,
+                `- triggered by commit \`${context.sha}\``,
+              ].join('\n'),
+            });
+
+            core.info(`Created pull request #${pullRequest.number}: ${pullRequest.html_url}`);
+
+permissions:
+  contents: write
+  pull-requests: write

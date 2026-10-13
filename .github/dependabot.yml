@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 20
+    rebase-strategy: "auto"
+    versioning-strategy: "increase-if-necessary"
+    # Exclude metric/analytics packages from version update PRs.
+    ignore:
+      - dependency-name: "*metrics*"
+      - dependency-name: "*analytics*"
+    groups:
+      patch-and-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
