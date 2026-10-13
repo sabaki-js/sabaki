@@ -18,7 +18,10 @@
 - [ ] Calibration (ECE) à la Laya/RLCD (version légère : temperature scaling)
 
 ## Fun / long terme
-- [ ] Plugin `@sabaki-js/doom` inspiré de `azalio/doomLaya` (baseline MiniLM 0,57, ModernBERT en test) : état texte + questions `command`/`weapon`, contrôleur d'exécution ; interface `Sabaki.decide()` déjà compatible (décision typée → action)
+- [ ] Plugin `@sabaki-js/doom` : finir (repo créé) — nav MiniLM v2 (3/6 match, DAgger en cours),
+      tête vision SFT (22,6 kills), assemblage two-head en test, vidéos avec overlay
+- [ ] Distillation Laya (licence Apache-2.0 OK, contrairement à Gemma) : Laya-multilingual
+      comme prof FR + Laya-td comme prof workflows, vers MiniLM puis `base` (baseline MiniLM 0,57, ModernBERT en test) : état texte + questions `command`/`weapon`, contrôleur d'exécution ; interface `Sabaki.decide()` déjà compatible (décision typée → action)
 - [ ] Brancher `bunkitsu` (CLI / hub de plugins)
 - [ ] LDA : outil de découverte pour corpus non étiquetés (testé sur mails : pureté insuffisante vs labels Gmail)
 - [ ] Benchmarker receptron/laya (portage ONNX) sur CPU : précision/latence vs sabaki nano/mini
