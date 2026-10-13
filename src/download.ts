@@ -107,8 +107,9 @@ export async function ensureMiniModel(
 	}
 	const cfg = JSON.parse(fs.readFileSync(path.join(dir, `${workflow}.json`), "utf8"));
 	if (temperatures[workflow]) {
+		const tw = temperatures[workflow] as Record<string, { T: number } | number>;
 		cfg.temperatures = Object.fromEntries(
-			Object.entries(temperatures[workflow] as Record<string, { T: number }>).map(([q, v]) => [q, v.T]),
+			Object.entries(tw).map(([q, v]) => [q, typeof v === "number" ? v : v.T]),
 		);
 	}
 	fs.writeFileSync(
