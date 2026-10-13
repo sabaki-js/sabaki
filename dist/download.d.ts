@@ -1,10 +1,10 @@
 /**
- * Prépare le dossier modèle `mini` d'un workflow, prêt pour {@link loadMini}.
+ * Prepares a workflow's `mini` model directory, ready for {@link loadMini}.
  *
- * @param {string} workflow - Le workflow (par exemple `"customer_service"`).
- * @param {string} version - Le tag de release (`"v0.1.0"` par défaut).
- * @returns {Promise<string>} Le chemin du dossier (`model.json` + ONNX + tokeniseur).
- * @throws {Error} En cas d'échec réseau ou de SHA256 invalide.
+ * @param {string} workflow - The workflow (e.g. `"customer_service"`).
+ * @param {string} version - The release tag (default `"v0.1.0"`).
+ * @returns {Promise<string>} The directory path (`model.json` + ONNX + tokenizer).
+ * @throws {Error} On network failure or invalid SHA256.
  * @example
  * ```ts
  * const dir = await ensureMiniModel("customer_service");

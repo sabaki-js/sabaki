@@ -4,7 +4,7 @@ import keywords from "./default-keywords.json" with { type: "json" };
 
 const kw = keywords as unknown as Record<string, string[]>;
 const domains = Object.keys(kw);
-// Plugin factice par domaine : répond la valeur majoritaire du train.
+// Dummy per-domain plugin: answers the train majority value.
 const plugins: SabakiPlugin[] = domains.map((d) => ({
 	manifest: {
 		name: `@sabaki/plugin-${d}`,
@@ -19,7 +19,7 @@ const plugins: SabakiPlugin[] = domains.map((d) => ({
 const s = new Sabaki();
 for (const p of plugins) s.register(p);
 
-// Cas réels : un état du test split par workflow (extrait du dataset public).
+// Real cases: one test-split state per workflow (from the public dataset).
 const states: Record<string, string> = {
 	customer_service:
 		"Customer with account lifetime value 1200 USD complains about double billing, wants a refund today or will cancel",
@@ -40,5 +40,5 @@ for (const [domain, state] of Object.entries(states)) {
 		`${good ? "PASS" : "FAIL"} ${domain} -> ${r.domain} (${r.confidence})`,
 	);
 }
-assert.equal(ok, 4, "routage des 4 workflows");
+assert.equal(ok, 4, "routing of the 4 workflows");
 console.log(`routage: ${ok}/4`);

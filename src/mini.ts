@@ -1,6 +1,6 @@
 /**
- * Runtime mode `mini` (ONNX). `onnxruntime-node` est optionnel et importé
- * dynamiquement : le core reste à zéro dépendance en mode `nano`.
+ * `mini`-mode runtime (ONNX). `onnxruntime-node` is optional and dynamically
+ * imported: the core stays dependency-free in `nano` mode.
  */
 import { encode, loadVocab } from "./wordpiece.js";
 
@@ -19,12 +19,12 @@ function softmax(a: number[]): number[] {
 }
 
 /**
- * Charge un modèle `mini` depuis un dossier préparé par {@link ensureMiniModel}
- * (`model.json` + `.onnx` + `tokenizer.json`). ~10–25 ms/req sur CPU desktop.
+ * Loads a `mini` model from a directory prepared by {@link ensureMiniModel}
+ * (`model.json` + `.onnx` + `tokenizer.json`). ~10–25 ms/req on desktop CPU.
  *
- * @param {string} modelDir - Le dossier modèle.
- * @returns {Promise<MiniModel>} Le modèle (`run(state, question)`).
- * @throws {Error} Si `onnxruntime-node` n'est pas installé.
+ * @param {string} modelDir - The model directory.
+ * @returns {Promise<MiniModel>} The model (`run(state, question)`).
+ * @throws {Error} When `onnxruntime-node` is not installed.
  * @example
  * ```ts
  * const mini = await loadMini(await ensureMiniModel("customer_service"));

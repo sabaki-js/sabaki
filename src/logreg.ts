@@ -1,27 +1,27 @@
 /**
- * Inférence LogReg TF-IDF en pur TS, parité exacte avec sklearn
- * (`TfidfVectorizer` + `LogisticRegression` : `sublinear_tf`, idf lissée,
- * norme L2, uni+bigrammes `[a-z]{3,}`, sigmoid binaire / softmax multi-classes).
- * Vérifiée sur 20 questions (voir `gpu/train.py`).
+ * Pure-TS TF-IDF LogReg inference, exact parity with sklearn
+ * (`TfidfVectorizer` + `LogisticRegression`: `sublinear_tf`, smoothed idf,
+ * L2 norm, `[a-z]{3,}` uni+bigrams, binary sigmoid / multi-class softmax).
+ * Verified on 20 questions (see `gpu/train.py`).
  */
 export interface QuestionWeights {
-	/** Étiquettes dans l'ordre des lignes de `coef` (binaire : 1 ligne = classe positive). */
+	/** Labels in `coef` row order (binary: 1 row = positive class). */
 	classes: string[];
-	/** Coefficients `[classe][terme]` (arrondis à 1e-4 sans perte mesurée). */
+	/** Coefficients `[class][term]` (rounded to 1e-4, no measured loss). */
 	coef: number[][];
-	/** Biais par classe. */
+	/** Per-class biases. */
 	intercept: number[];
 }
 
-/** Poids TF-IDF + LogReg d'un domaine (produits par `gpu/train.py`). */
+/** TF-IDF + LogReg weights of a domain (produced by `gpu/train.py`). */
 export interface ModelWeights {
-	/** Domaine (par exemple `"customer_service"`). */
+	/** Domain (e.g. `"customer_service"`). */
 	workflow: string;
-	/** Vocabulaire uni+bigrammes (max 3000, `min_df` selon l'entraînement). */
+	/** Uni+bigram vocabulary (max 3000, `min_df` per training). */
 	vocab: string[];
-	/** IDF lissée de sklearn (`log((1+n)/(1+df)) + 1`). */
+	/** sklearn smoothed IDF (`log((1+n)/(1+df)) + 1`). */
 	idf: number[];
-	/** Poids par question typée. */
+	/** Per-typed-question weights. */
 	questions: Record<string, QuestionWeights>;
 }
 
@@ -37,11 +37,11 @@ function tokens(s: string): string[] {
 }
 
 /**
- * Vectorise `state` : TF sous-linéaire (`1 + ln(c)`), IDF, norme L2.
+ * Vectorizes `state`: sublinear TF (`1 + ln(c)`), IDF, L2 norm.
  *
- * @param {string} state - Le texte à vectoriser.
- * @param {ModelWeights} w - Les poids (vocabulaire + IDF).
- * @returns {number[]} Le vecteur creux (dense ici, `vocab.length` dims).
+ * @param {string} state - The text to vectorize.
+ * @param {ModelWeights} w - The weights (vocabulary + IDF).
+ * @returns {number[]} The sparse vector (dense here, `vocab.length` dims).
  */
 export function featurize(state: string, w: ModelWeights): number[] {
 	const counts = new Map<string, number>();
@@ -64,13 +64,13 @@ export function featurize(state: string, w: ModelWeights): number[] {
 }
 
 /**
- * Tranche une question : produit scalaire + sigmoid (binaire) ou softmax.
+ * Decides a question: dot product + sigmoid (binary) or softmax.
  *
- * @param {string} state - Le texte à trancher.
- * @param {ModelWeights} w - Les poids du domaine.
- * @param {string} question - La question (clé de `w.questions`).
- * @returns La décision (classe gagnante) et sa confiance (probabilité max).
- * @throws {Error} Si la question est inconnue du modèle.
+ * @param {string} state - The text to decide on.
+ * @param {ModelWeights} w - The domain weights.
+ * @param {string} question - The question (a `w.questions` key).
+ * @returns The decision (winning class) and its confidence (max probability).
+ * @throws {Error} When the question is unknown to the model.
  * @example
  * ```ts
  * predict("facture double, remboursement urgent", weights, "category");
@@ -85,7 +85,7 @@ export function predict(
 	const q = w.questions[question];
 	if (!q) throw new Error(`question inconnue: ${question}`);
 	const x = featurize(state, w);
-	// Cas binaire sklearn : une seule ligne de coefs (classe positive), décision par sigmoid.
+	// sklearn binary case: a single coef row (positive class), sigmoid decision.
 	if (q.classes.length === 2 && q.coef.length === 1) {
 		const row = q.coef[0]!;
 		let s = q.intercept[0]!;

@@ -1,8 +1,8 @@
 /**
- * Téléchargement des poids `mini` depuis les Releases `sabaki-models`
- * (sans authentification), avec vérification SHA256 et cache local
- * (`~/.cache/sabaki/<version>/<workflow>/`). Les fichiers valides ne sont
- * jamais retéléchargés ; un fichier corrompu est supprimé et signalé.
+ * Downloads `mini` weights from the `sabaki-models` Releases
+ * (no authentication), with SHA256 verification and local cache
+ * (`~/.cache/sabaki/<version>/<workflow>/`). Valid files are never
+ * re-downloaded; a corrupted file is deleted and reported.
  */
 import fs from "fs";
 import path from "path";
@@ -43,12 +43,12 @@ async function fetchFile(url: string, dest: string): Promise<void> {
 }
 
 /**
- * Prépare le dossier modèle `mini` d'un workflow, prêt pour {@link loadMini}.
+ * Prepares a workflow's `mini` model directory, ready for {@link loadMini}.
  *
- * @param {string} workflow - Le workflow (par exemple `"customer_service"`).
- * @param {string} version - Le tag de release (`"v0.1.0"` par défaut).
- * @returns {Promise<string>} Le chemin du dossier (`model.json` + ONNX + tokeniseur).
- * @throws {Error} En cas d'échec réseau ou de SHA256 invalide.
+ * @param {string} workflow - The workflow (e.g. `"customer_service"`).
+ * @param {string} version - The release tag (default `"v0.1.0"`).
+ * @returns {Promise<string>} The directory path (`model.json` + ONNX + tokenizer).
+ * @throws {Error} On network failure or invalid SHA256.
  * @example
  * ```ts
  * const dir = await ensureMiniModel("customer_service");
@@ -86,7 +86,7 @@ export async function ensureMiniModel(
 			await fetchFile(`${releaseBase}/${encodeURIComponent(base)}`, dest);
 			if (sum && (await sha256(dest)) !== sum) {
 				fs.unlinkSync(dest);
-				throw new Error(`SHA256 invalide pour ${f}`);
+				throw new Error(`Invalid SHA256 for ${f}`);
 			}
 		}
 	}

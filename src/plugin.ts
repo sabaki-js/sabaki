@@ -1,6 +1,6 @@
 /**
- * Fabriques génériques de plugins : `nano` (poids embarqués, <1 ms),
- * `mini` (ONNX téléchargé, ~20 ms), ou 100 % à la volée.
+ * Generic plugin factories: `nano` (bundled weights, <1 ms),
+ * `mini` (downloaded ONNX, ~20 ms), or fully ad-hoc.
  */
 import { predict, type ModelWeights } from "./logreg.js";
 import { loadMini } from "./mini.js";
@@ -18,11 +18,11 @@ export interface DefinePluginOptions {
 }
 
 /**
- * Crée un plugin à la volée, sans repo ni entraînement : le contrat minimal suffit.
+ * Creates an ad-hoc plugin, no repo or training needed: the minimal contract suffices.
  *
- * @param {DefinePluginOptions} opts - Le manifest et la fonction `classify`.
- * @returns {SabakiPlugin} Un plugin enregistrable via `Sabaki.register`.
- * @throws {Error} Si `manifest.domain` manque.
+ * @param {DefinePluginOptions} opts - The manifest and the `classify` function.
+ * @returns {SabakiPlugin} A plugin registrable via `Sabaki.register`.
+ * @throws {Error} When `manifest.domain` is missing.
  * @example
  * ```ts
  * const ping = definePlugin({
@@ -40,14 +40,14 @@ export function definePlugin(opts: DefinePluginOptions): SabakiPlugin {
 }
 
 /**
- * Plugin `nano` générique à partir de poids TF-IDF + LogReg embarqués
- * (voir `gpu/train.py` pour les produire : vocabulaire, idf, coefs).
+ * Generic `nano` plugin from bundled TF-IDF + LogReg weights
+ * (see `gpu/train.py` to produce them: vocabulary, idf, coefs).
  *
- * @param {PluginManifest} manifest - Le manifest (domaine, questions, mots-clés).
- * @param {ModelWeights} weights - Les poids (`vocab`, `idf`, `questions`).
- * @param {{ primary?: string; joinFrom?: boolean }} opts - `primary` surcharge
- * `manifest.primary` ; `joinFrom` préfixe l'état par `input.from` (plugin mail).
- * @returns {SabakiPlugin} Synchrone (<1 ms sur CPU).
+ * @param {PluginManifest} manifest - The manifest (domain, questions, keywords).
+ * @param {ModelWeights} weights - The weights (`vocab`, `idf`, `questions`).
+ * @param {{ primary?: string; joinFrom?: boolean }} opts - `primary` overrides
+ * `manifest.primary`; `joinFrom` prefixes the state with `input.from` (mail plugin).
+ * @returns {SabakiPlugin} Synchronous (<1 ms on CPU).
  */
 export function nanoClassifier(
 	manifest: PluginManifest,
@@ -75,15 +75,15 @@ export function nanoClassifier(
 }
 
 /**
- * Plugin `mini` générique : télécharge les poids ONNX (cache + SHA256,
- * voir {@link ensureMiniModel}) puis classifie. Utilisez `classifyAsync`
- * ou `Sabaki.decideAsync` (l'inférence est asynchrone).
+ * Generic `mini` plugin: downloads the ONNX weights (cache + SHA256,
+ * see {@link ensureMiniModel}) then classifies. Use `classifyAsync`
+ * or `Sabaki.decideAsync` (inference is async).
  *
- * @param {PluginManifest} manifest - Le manifest (domaine, questions).
- * @param {string} workflow - Nom du modèle (par exemple `"customer_service"`).
- * @param {{ primary?: string; version?: string }} opts - Question et version
- * de release (`"v0.1.0"` par défaut).
- * @returns {Promise<SabakiPlugin>} Le plugin (avec `classifyAsync`).
+ * @param {PluginManifest} manifest - The manifest (domain, questions).
+ * @param {string} workflow - The model name (e.g. `"customer_service"`).
+ * @param {{ primary?: string; version?: string }} opts - Question and release
+ * version (default `"v0.1.0"`).
+ * @returns {Promise<SabakiPlugin>} The plugin (with `classifyAsync`).
  * @example
  * ```ts
  * const mini = await miniClassifier(manifest, "customer_service");

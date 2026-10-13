@@ -9,11 +9,11 @@ function tokens(s) {
     return out;
 }
 /**
- * Vectorise `state` : TF sous-linéaire (`1 + ln(c)`), IDF, norme L2.
+ * Vectorizes `state`: sublinear TF (`1 + ln(c)`), IDF, L2 norm.
  *
- * @param {string} state - Le texte à vectoriser.
- * @param {ModelWeights} w - Les poids (vocabulaire + IDF).
- * @returns {number[]} Le vecteur creux (dense ici, `vocab.length` dims).
+ * @param {string} state - The text to vectorize.
+ * @param {ModelWeights} w - The weights (vocabulary + IDF).
+ * @returns {number[]} The sparse vector (dense here, `vocab.length` dims).
  */
 export function featurize(state, w) {
     const counts = new Map();
@@ -38,13 +38,13 @@ export function featurize(state, w) {
     return x;
 }
 /**
- * Tranche une question : produit scalaire + sigmoid (binaire) ou softmax.
+ * Decides a question: dot product + sigmoid (binary) or softmax.
  *
- * @param {string} state - Le texte à trancher.
- * @param {ModelWeights} w - Les poids du domaine.
- * @param {string} question - La question (clé de `w.questions`).
- * @returns La décision (classe gagnante) et sa confiance (probabilité max).
- * @throws {Error} Si la question est inconnue du modèle.
+ * @param {string} state - The text to decide on.
+ * @param {ModelWeights} w - The domain weights.
+ * @param {string} question - The question (a `w.questions` key).
+ * @returns The decision (winning class) and its confidence (max probability).
+ * @throws {Error} When the question is unknown to the model.
  * @example
  * ```ts
  * predict("facture double, remboursement urgent", weights, "category");
@@ -56,7 +56,7 @@ export function predict(state, w, question) {
     if (!q)
         throw new Error(`question inconnue: ${question}`);
     const x = featurize(state, w);
-    // Cas binaire sklearn : une seule ligne de coefs (classe positive), décision par sigmoid.
+    // sklearn binary case: a single coef row (positive class), sigmoid decision.
     if (q.classes.length === 2 && q.coef.length === 1) {
         const row = q.coef[0];
         let s = q.intercept[0];
