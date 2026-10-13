@@ -101,8 +101,9 @@ export async function ensureMiniModel(workflow, version = "v0.2.0", variant = "i
         /* pas de températures : confiance brute */
     }
     const cfg = JSON.parse(fs.readFileSync(path.join(dir, `${workflow}.json`), "utf8"));
-    if (temperatures[workflow])
-        cfg.temperatures = temperatures[workflow];
+    if (temperatures[workflow]) {
+        cfg.temperatures = Object.fromEntries(Object.entries(temperatures[workflow]).map(([q, v]) => [q, v.T]));
+    }
     fs.writeFileSync(path.join(dir, "model.json"), JSON.stringify({ model: `${workflow}${suffix}.onnx`, config: cfg }));
     return dir;
 }
