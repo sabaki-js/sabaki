@@ -20,14 +20,17 @@ const WF = [
 const plugins = {};
 for (const wf of WF) {
 	const domain = wf.replace(/_observability$/, "").replace(/_/g, "-");
-	try {
-		const mod = await import(`@sabaki-js/${domain}/dist/index.js`).catch(
-			async () => await import(`@sabaki-js/plugin-${domain}/dist/index.js`),
-		);
-		plugins[wf] = mod.default ?? mod;
-	} catch {
-		console.log(`plugin manquant: ${domain} (repli routage seul)`);
+	let mod = null;
+	for (const cand of [`@sabaki-js/${domain}`, `@sabaki-js/plugin-${domain}`]) {
+		try {
+			mod = await import(cand);
+			break;
+		} catch {
+			/* suivant */
+		}
 	}
+	if (mod) plugins[wf] = mod.default ?? mod;
+	else console.log(`plugin manquant: ${domain} (repli routage seul)`);
 }
 
 const s = new Sabaki();
@@ -69,10 +72,14 @@ const server = http.createServer(async (req, res) => {
 			for (const [q, spec] of Object.entries(questions ?? {})) {
 				const type =
 					spec.type === "noul" ? "noul" : spec.type === "score" ? "score" : "choice";
+				// Le plugin ne connaît que ses questions entraînées : on répond avec
+				// sa question primaire sous le nom demandé (comportement type Jev).
 				const mini = await miniFor(route.domain);
 				if (mini && route.plugin) {
 					try {
-						const r = await mini.run(st, q);
+						const primary =
+							route.plugin.manifest.primary ?? route.plugin.manifest.questions[0];
+						const r = await mini.run(st, primary);
 						answers[q] =
 							type === "choice"
 								? {
@@ -99,7 +106,7 @@ const server = http.createServer(async (req, res) => {
 					}
 				}
 				if (route.plugin) {
-					const out = route.plugin.classify({ state: st, question: q });
+					const out = route.plugin.classify({ state: st });
 					answers[q] = {
 						type: spec.type ?? "choice",
 						choice: out.decision,
