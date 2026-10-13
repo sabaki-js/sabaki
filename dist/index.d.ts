@@ -39,6 +39,7 @@ export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
 export type { MiniVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
+export { ensureMiniModel } from "./download.js";
 export declare class Sabaki {
     private plugins;
     register(plugin: SabakiPlugin): this;
