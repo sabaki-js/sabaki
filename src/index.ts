@@ -28,7 +28,7 @@ export interface ClassifyOutput {
 
 export interface SabakiPlugin {
   manifest: PluginManifest;
-  classify: (input: SabakiInput) => ClassifyOutput;
+  classify: (input: SabakiInput) => ClassifyOutput | Promise<ClassifyOutput>;
 }
 
 export interface DecideOutput extends ClassifyOutput {
@@ -65,6 +65,8 @@ export type { MiniVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
 export { ensureMiniModel } from "./download.js";
+export { definePlugin, miniClassifier } from "./plugin.js";
+export type { DefinePluginOptions } from "./plugin.js";
 
 export class Sabaki {
   private plugins: SabakiPlugin[] = [];
@@ -102,7 +104,17 @@ export class Sabaki {
     if (r.domain === "unknown" || !r.plugin) {
       return { domain: "unknown", decision: null, confidence: 0, plugin: null };
     }
-    const out = r.plugin.classify(input);
+    const out = r.plugin.classify(input) as ClassifyOutput;
+    return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
+  }
+
+  /** Variante asynchrone (plugins mini / distants). */
+  async decideAsync(input: SabakiInput): Promise<DecideOutput> {
+    const r = this.route(input.state);
+    if (r.domain === "unknown" || !r.plugin) {
+      return { domain: "unknown", decision: null, confidence: 0, plugin: null };
+    }
+    const out = await r.plugin.classify(input);
     return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
   }
 }

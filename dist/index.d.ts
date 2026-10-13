@@ -23,7 +23,7 @@ export interface ClassifyOutput {
 }
 export interface SabakiPlugin {
     manifest: PluginManifest;
-    classify: (input: SabakiInput) => ClassifyOutput;
+    classify: (input: SabakiInput) => ClassifyOutput | Promise<ClassifyOutput>;
 }
 export interface DecideOutput extends ClassifyOutput {
     plugin: string | null;
@@ -40,6 +40,8 @@ export type { MiniVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
 export { ensureMiniModel } from "./download.js";
+export { definePlugin, miniClassifier } from "./plugin.js";
+export type { DefinePluginOptions } from "./plugin.js";
 export declare class Sabaki {
     private plugins;
     register(plugin: SabakiPlugin): this;
@@ -49,5 +51,7 @@ export declare class Sabaki {
         plugin: SabakiPlugin | null;
     };
     decide(input: SabakiInput): DecideOutput;
+    /** Variante asynchrone (plugins mini / distants). */
+    decideAsync(input: SabakiInput): Promise<DecideOutput>;
 }
 //# sourceMappingURL=index.d.ts.map

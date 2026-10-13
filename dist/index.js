@@ -20,6 +20,7 @@ export { featurize, predict } from "./logreg.js";
 export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export { ensureMiniModel } from "./download.js";
+export { definePlugin, miniClassifier } from "./plugin.js";
 export class Sabaki {
     plugins = [];
     register(plugin) {
@@ -56,6 +57,15 @@ export class Sabaki {
             return { domain: "unknown", decision: null, confidence: 0, plugin: null };
         }
         const out = r.plugin.classify(input);
+        return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
+    }
+    /** Variante asynchrone (plugins mini / distants). */
+    async decideAsync(input) {
+        const r = this.route(input.state);
+        if (r.domain === "unknown" || !r.plugin) {
+            return { domain: "unknown", decision: null, confidence: 0, plugin: null };
+        }
+        const out = await r.plugin.classify(input);
         return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
     }
 }
