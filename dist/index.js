@@ -17,6 +17,8 @@ function tokens(s) {
 }
 const ROUTE_THRESHOLD = 0.15;
 export { featurize, predict } from "./logreg.js";
+export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
+export { loadMini } from "./mini.js";
 export class Sabaki {
     plugins = [];
     register(plugin) {

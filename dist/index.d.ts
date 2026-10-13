@@ -35,6 +35,10 @@ export declare const DEFAULT_DOMAINS: readonly ["customer_service", "invoice_pro
 export type DefaultDomain = (typeof DEFAULT_DOMAINS)[number];
 export { featurize, predict } from "./logreg.js";
 export type { ModelWeights, QuestionWeights } from "./logreg.js";
+export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
+export type { MiniVocab } from "./wordpiece.js";
+export { loadMini } from "./mini.js";
+export type { MiniModel } from "./mini.js";
 export declare class Sabaki {
     private plugins;
     register(plugin: SabakiPlugin): this;

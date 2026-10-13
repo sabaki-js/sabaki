@@ -57,5 +57,13 @@
 		"type": "git",
 		"url": "https://github.com/sabaki-js/sabaki"
 	},
-	"author": "fox3000foxy"
+	"author": "fox3000foxy",
+	"peerDependenciesMeta": {
+		"onnxruntime-node": {
+			"optional": true
+		}
+	},
+	"optionalDependencies": {
+		"onnxruntime-node": "^1.22.0"
+	}
 }
