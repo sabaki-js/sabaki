@@ -84,9 +84,25 @@ export async function ensureMiniModel(workflow, version = "v0.2.0", variant = "i
             await fetchFile(`${metaBase}/${encodeURIComponent(base)}`, dest);
         }
     }
-    fs.writeFileSync(path.join(dir, "model.json"), JSON.stringify({
-        model: `${workflow}${suffix}.onnx`,
-        config: JSON.parse(fs.readFileSync(path.join(dir, `${workflow}.json`), "utf8")),
-    }));
+    const tempFile = path.join(dir, "temperatures.json");
+    if (!fs.existsSync(tempFile)) {
+        try {
+            await fetchFile(`${releaseBase}/temperatures.json`, tempFile);
+        }
+        catch {
+            /* températures optionnelles */
+        }
+    }
+    let temperatures = {};
+    try {
+        temperatures = JSON.parse(fs.readFileSync(path.join(dir, "temperatures.json"), "utf8"));
+    }
+    catch {
+        /* pas de températures : confiance brute */
+    }
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, `${workflow}.json`), "utf8"));
+    if (temperatures[workflow])
+        cfg.temperatures = temperatures[workflow];
+    fs.writeFileSync(path.join(dir, "model.json"), JSON.stringify({ model: `${workflow}${suffix}.onnx`, config: cfg }));
     return dir;
 }
