@@ -1,130 +1,62 @@
-# module-template
+# sabaki
 
-Template de base pour publier rapidement un module TypeScript sur npm, avec une pile de qualité minimale (TypeScript + Biome + ESLint) et un pipeline GitHub Actions.
+Lightweight typed-decision router with pluggable classifiers. Zero runtime dependencies in `nano` mode.
 
-Ce repository n'est pas un produit fini. Il sert de point de depart a cloner/copie pour un nouveau package.
+![sabaki logo](assets/logo.svg)
 
-## Ce que fait ce template
+Give it a state (ticket, email, game snapshot — text or JSON) and it routes to the right plugin, which answers with a **typed decision + confidence** instead of generated text:
 
-- Build TypeScript vers `dist/`
-- Generation des declarations `.d.ts`
-- Verification statique (typecheck + lint + format)
-- Publication npm via tag Git (`v*`) dans GitHub Actions
-- Script local pour creer le tag/release et declencher la publication
+```ts
+import { Sabaki } from "sabaki";
+import mail from "@sabaki-js/mail";
 
-## Structure actuelle
-
-```text
-.
-├─ .github/
-│  └─ workflows/
-│     ├─ publish.yml
-│     ├─ test-battery.yml
-│     └─ create-pull-request.yml
-├─ scripts/
-│  └─ publish-package.sh
-├─ package.json
-├─ tsconfig.json
-├─ biome.json
-└─ eslint.config.ts
+const sabaki = new Sabaki().register(mail);
+sabaki.decide({ state: "N'oubliez pas de terminer Lupin", from: "Netflix <info@members.netflix.com>" });
+// { domain: "mail", decision: "promotions", confidence: 0.71, plugin: "@sabaki-js/mail" }
 ```
 
-## Comment le template fonctionne
+Never guesses: unknown domain → `{ domain: "unknown", decision: null }`.
 
-### 1) Build TypeScript
+## Modes
 
-La configuration `tsconfig.json` est prete pour une lib TS moderne:
+| mode | weights | latency (CPU) | deps |
+|---|---|---|---|
+| `nano` (default) | bundled TF-IDF (~1 MB), <1 ms | <1 ms | none |
+| `mini` | downloaded ONNX MiniLM (~87 MB, cached + SHA256) | ~20 ms | `onnxruntime-node` (optional) |
 
-- entree: `src/**/*`
-- sortie JS: `dist/`
-- declarations: activees (`declaration`, `declarationMap`)
-- mode strict active
-
-Le script de build lance:
-
-```bash
-npm run build
+```ts
+import { miniClassifier } from "sabaki";
+const mini = await miniClassifier(manifest, "customer_service"); // downloads once
+await sabaki.decideAsync({ state }); // async path for mini/remote plugins
 ```
 
-### 2) Qualite de code
+## Create a plugin
 
-Le template fournit:
-
-- `npm run typecheck` -> verifie les types sans emission
-- `npm run check` -> controle Biome
-- `npm run lint` -> lint Biome
-- `npm run format` -> formatage Biome
-
-ESLint est aussi configure (`eslint.config.ts`) avec les regles JS recommandees + TypeScript ESLint.
-
-### 3) Packaging npm
-
-`package.json` est configure pour publier uniquement:
-
-- `dist`
-- `README.md`
-- `LICENSE`
-
-Avant publication, `prepack` lance automatiquement le build.
-
-### 4) Publication automatisee
-
-Le workflow [publish.yml](.github/workflows/publish.yml) se declenche:
-
-- sur push d'un tag `v*`
-- ou manuellement (`workflow_dispatch`)
-
-Il fait:
-
-1. checkout
-2. install
-3. build
-4. `npm publish`
-
-### 5) Script de release local
-
-Le script [scripts/publish-package.sh](scripts/publish-package.sh):
-
-- refuse d'executer si le repo git n'est pas clean
-- lit la version dans `package.json`
-- cree/push le tag `v<version>`
-- supprime ancien tag/release si deja present
-- cree une release GitHub (si `gh` est installe)
-
-Commande:
-
-```bash
-npm run publish-package
+```ts
+import { definePlugin } from "sabaki";
+const ping = definePlugin({
+  manifest: { name: "ping", domain: "ping", version: "0.1.0", questions: ["up"], keywords: ["ping"] },
+  classify: () => ({ decision: "pong", confidence: 1, domain: "ping" }),
+});
 ```
 
-## Utilisation recommandee
+Or start from [`@sabaki-js/plugin-template`](https://github.com/sabaki-js/plugin-template)
+(`nanoClassifier` for trained weights, `miniClassifier` for ONNX).
 
-1. Renommer le package et adapter la metadata dans `package.json`
-2. Creer votre dossier `src/` et votre point d'entree `src/index.ts`
-3. Verifier localement:
+## Benchmarks (honest numbers, held-out test sets)
 
-```bash
-npm install
-npm run typecheck
-npm run lint
-npm run build
-```
+| plugin | question | accuracy |
+|---|---|---|
+| customer-service | category | 0.900 |
+| invoice-processing | duplicate | 0.890 |
+| security-incidents | disposition | 0.730 |
+| agent-trace | needs_review | 0.590 |
+| mail | bucket | 0.848 |
 
-4. Bumper la version (`npm version patch|minor|major`)
-5. Publier via tag:
+ONNX `mini` models: ECE < 0.14, healthy doubt on out-of-distribution inputs.
+See [`bench/`](https://github.com/fox3000foxy/sabaki) history and `TODO.md` for the roadmap
+(ModernBERT student, int8 quantization, npm publish).
 
-```bash
-npm run publish-package
-```
+## License
 
-## Prerequis
-
-- Node.js recent
-- npm
-- git
-- optionnel: `gh` CLI pour la gestion auto des releases GitHub
-
-## Remarques
-
-- Le template suppose la presence d'un `src/` (a creer dans un nouveau module).
-- Les workflows GitHub utilisent des secrets/protections de votre repo cible.
+MIT
