@@ -20,8 +20,7 @@
 ## Fun / long terme
 - [ ] Plugin `@sabaki-js/doom` : finir (repo créé) — nav MiniLM v2 (3/6 match, DAgger en cours),
       tête vision SFT (22,6 kills), assemblage two-head en test, vidéos avec overlay
-- [ ] Corpus `sabaki-general` : typed-decisions + NLI (MNLI/SNLI/ChaosNLI en noul/choice)
-      + synthétique labellisé par consensus de profs — dataset HF privé puis public
+- [x] Corpus `sabaki-general` : NLI fait (188 988 ex. MNLI/SNLI/ANLI/ChaosNLI en noul/choice → corpus/nli_train.jsonl + calibration.json ; synthétique : harness testé à sec, génération GPU restante, voir corpus/synthetic_TODO.md)
 - [ ] Distillation Laya (licence Apache-2.0 OK, contrairement à Gemma) : Laya-multilingual
       comme prof FR + Laya-td comme prof workflows, vers MiniLM puis `base` (baseline MiniLM 0,57, ModernBERT en test) : état texte + questions `command`/`weapon`, contrôleur d'exécution ; interface `Sabaki.decide()` déjà compatible (décision typée → action)
 - [ ] Brancher `bunkitsu` (CLI / hub de plugins)
