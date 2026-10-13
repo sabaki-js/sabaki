@@ -46,7 +46,11 @@ export async function loadMini(modelDir: string): Promise<MiniModel> {
 		fs.readFileSync(path.join(modelDir, "model.json"), "utf8"),
 	) as {
 		model: string;
-		config: { questions: string[]; classes: Record<string, string[]> };
+		config: {
+			questions: string[];
+			classes: Record<string, string[]>;
+			temperatures?: Record<string, number>;
+		};
 	};
 	const vocab = loadVocab(
 		JSON.parse(fs.readFileSync(path.join(modelDir, "tokenizer.json"), "utf8")),
@@ -78,7 +82,9 @@ export async function loadMini(modelDir: string): Promise<MiniModel> {
 				string,
 				{ data: ArrayLike<number> }
 			>;
-			const p = softmax(Array.from(out[`logits_${question}`]!.data));
+			const raw = Array.from(out[`logits_${question}`]!.data);
+			const temp = config.temperatures?.[question] ?? 1;
+			const p = softmax(raw.map((x) => x / temp));
 			let bi = 0;
 			p.forEach((v, i) => {
 				if (v > p[bi]!) bi = i;

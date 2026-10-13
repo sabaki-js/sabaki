@@ -53,7 +53,9 @@ export async function loadMini(modelDir) {
             };
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
             const out = (await sess.run(feeds));
-            const p = softmax(Array.from(out[`logits_${question}`].data));
+            const raw = Array.from(out[`logits_${question}`].data);
+            const temp = config.temperatures?.[question] ?? 1;
+            const p = softmax(raw.map((x) => x / temp));
             let bi = 0;
             p.forEach((v, i) => {
                 if (v > p[bi])
