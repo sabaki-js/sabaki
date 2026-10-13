@@ -13,7 +13,11 @@ export interface PluginManifest {
   domain: string;
   version: string;
   questions: string[];
+  /** Question répondue par défaut (défaut : questions[0]). */
+  primary?: string;
   keywords: string[];
+  /** Seuil de routage (défaut 0.15). Sujets courts : 0.05. */
+  threshold?: number;
 }
 
 export interface ClassifyOutput {
@@ -78,7 +82,7 @@ export class Sabaki {
       const score = hits / kws.length;
       if (!best || score > best.score) best = { plugin: p, score };
     }
-    if (!best || best.score < ROUTE_THRESHOLD) {
+    if (!best || best.score < (best.plugin.manifest.threshold ?? ROUTE_THRESHOLD)) {
       return { domain: "unknown", confidence: 0, plugin: null };
     }
     return {

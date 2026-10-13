@@ -38,7 +38,7 @@ export class Sabaki {
             if (!best || score > best.score)
                 best = { plugin: p, score };
         }
-        if (!best || best.score < ROUTE_THRESHOLD) {
+        if (!best || best.score < (best.plugin.manifest.threshold ?? ROUTE_THRESHOLD)) {
             return { domain: "unknown", confidence: 0, plugin: null };
         }
         return {
