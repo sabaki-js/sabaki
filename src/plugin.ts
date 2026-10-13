@@ -81,8 +81,8 @@ export function nanoClassifier(
  *
  * @param {PluginManifest} manifest - The manifest (domain, questions).
  * @param {string} workflow - The model name (e.g. `"customer_service"`).
- * @param {{ primary?: string; version?: string }} opts - Question and release
- * version (default `"v0.1.0"`).
+ * @param {{ primary?: string; version?: string; variant?: "int8" | "fp32" }} opts - Question,
+ * release version (default `"v0.2.0"`) and precision (default `"int8"`).
  * @returns {Promise<SabakiPlugin>} The plugin (with `classifyAsync`).
  * @example
  * ```ts
@@ -93,14 +93,18 @@ export function nanoClassifier(
 export async function miniClassifier(
 	manifest: PluginManifest,
 	workflow: string,
-	opts: { primary?: string; version?: string } = {},
+	opts: {
+		primary?: string;
+		version?: string;
+		variant?: "int8" | "fp32";
+	} = {},
 ): Promise<
 	SabakiPlugin & {
 		classifyAsync: (input: SabakiInput) => Promise<ClassifyOutput>;
 	}
 > {
 	const primary = opts.primary ?? manifest.primary ?? manifest.questions[0]!;
-	const dir = await ensureMiniModel(workflow, opts.version);
+	const dir = await ensureMiniModel(workflow, opts.version, opts.variant);
 	const mini = await loadMini(dir);
 	const classifyAsync = async (input: SabakiInput): Promise<ClassifyOutput> => {
 		const q = input.question ?? primary;

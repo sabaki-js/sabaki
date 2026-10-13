@@ -44,8 +44,8 @@ export declare function nanoClassifier(manifest: PluginManifest, weights: ModelW
  *
  * @param {PluginManifest} manifest - The manifest (domain, questions).
  * @param {string} workflow - The model name (e.g. `"customer_service"`).
- * @param {{ primary?: string; version?: string }} opts - Question and release
- * version (default `"v0.1.0"`).
+ * @param {{ primary?: string; version?: string; variant?: "int8" | "fp32" }} opts - Question,
+ * release version (default `"v0.2.0"`) and precision (default `"int8"`).
  * @returns {Promise<SabakiPlugin>} The plugin (with `classifyAsync`).
  * @example
  * ```ts
@@ -56,6 +56,7 @@ export declare function nanoClassifier(manifest: PluginManifest, weights: ModelW
 export declare function miniClassifier(manifest: PluginManifest, workflow: string, opts?: {
     primary?: string;
     version?: string;
+    variant?: "int8" | "fp32";
 }): Promise<SabakiPlugin & {
     classifyAsync: (input: SabakiInput) => Promise<ClassifyOutput>;
 }>;

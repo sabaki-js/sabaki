@@ -22,24 +22,15 @@ function sha256(file) {
 async function fetchFile(url, dest) {
     const res = await fetch(url, { redirect: "follow" });
     if (!res.ok || !res.body)
-        throw new Error(`téléchargement ${url} : ${res.status}`);
-    await new Promise((resolve, reject) => {
-        const w = fs.createWriteStream(dest);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        res.body
-            .pipeTo(new WritableStream({
-            write: (c) => void w.write(c),
-            close: () => (w.end(), resolve()),
-        }))
-            .catch(reject);
-        w.on("error", reject);
-    });
+        throw new Error(`download ${url}: ${res.status}`);
+    fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
 }
 /**
  * Prepares a workflow's `mini` model directory, ready for {@link loadMini}.
  *
  * @param {string} workflow - The workflow (e.g. `"customer_service"`).
- * @param {string} version - The release tag (default `"v0.1.0"`).
+ * @param {string} version - The release tag (default `"v0.2.0"`).
+ * @param {"int8" | "fp32"} variant - Quantized (default, ~22 MB) or full precision (~90 MB).
  * @returns {Promise<string>} The directory path (`model.json` + ONNX + tokenizer).
  * @throws {Error} On network failure or invalid SHA256.
  * @example
@@ -48,14 +39,16 @@ async function fetchFile(url, dest) {
  * const mini = await loadMini(dir);
  * ```
  */
-export async function ensureMiniModel(workflow, version = "v0.1.0") {
+export async function ensureMiniModel(workflow, version = "v0.2.0", variant = "int8") {
     const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
-    const dir = path.join(CACHE, version, workflow);
+    const suffix = variant === "int8" ? "_int8" : "";
+    const dir = path.join(CACHE, version, `${workflow}-${variant}`);
     fs.mkdirSync(dir, { recursive: true });
     const sums = {};
-    const sumsCached = path.join(CACHE, version, "SHA256SUMS");
+    const sumsName = variant === "int8" ? "SHA256SUMS_INT8" : "SHA256SUMS";
+    const sumsCached = path.join(CACHE, version, sumsName);
     if (!fs.existsSync(sumsCached)) {
-        await fetchFile(`${releaseBase}/SHA256SUMS`, sumsCached);
+        await fetchFile(`${releaseBase}/${sumsName}`, sumsCached);
     }
     for (const line of fs.readFileSync(sumsCached, "utf8").split("\n")) {
         const m = line.match(/^([0-9a-f]{64})\s+(.+)$/);
@@ -63,8 +56,11 @@ export async function ensureMiniModel(workflow, version = "v0.1.0") {
             sums[m[2]] = m[1];
     }
     const files = [
-        `minilaya-onnx/${workflow}.onnx`,
-        `minilaya-onnx/${workflow}.onnx.data`,
+        `minilaya-onnx/${workflow}${suffix}.onnx`,
+        `minilaya-onnx/${workflow}${suffix}.onnx.data`,
+    ];
+    const metaBase = `https://github.com/sabaki-js/sabaki-models/releases/download/v0.1.0`;
+    const meta = [
         `minilaya-onnx/${workflow}.json`,
         "minilaya-onnx/tokenizer/tokenizer.json",
     ];
@@ -81,8 +77,15 @@ export async function ensureMiniModel(workflow, version = "v0.1.0") {
             }
         }
     }
+    for (const f of meta) {
+        const base = path.basename(f);
+        const dest = path.join(dir, base);
+        if (!fs.existsSync(dest) || (await sha256(dest)) === "") {
+            await fetchFile(`${metaBase}/${encodeURIComponent(base)}`, dest);
+        }
+    }
     fs.writeFileSync(path.join(dir, "model.json"), JSON.stringify({
-        model: `${workflow}.onnx`,
+        model: `${workflow}${suffix}.onnx`,
         config: JSON.parse(fs.readFileSync(path.join(dir, `${workflow}.json`), "utf8")),
     }));
     return dir;
