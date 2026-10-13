@@ -3,6 +3,8 @@ export type Decision = string | number | boolean | null;
 
 export interface SabakiInput {
   state: string;
+  /** Nom de la question à trancher (défaut : question principale du plugin). */
+  question?: string;
   [key: string]: unknown;
 }
 
@@ -51,6 +53,9 @@ function tokens(s: string): string[] {
 }
 
 const ROUTE_THRESHOLD = 0.15;
+
+export { featurize, predict } from "./logreg.js";
+export type { ModelWeights, QuestionWeights } from "./logreg.js";
 
 export class Sabaki {
   private plugins: SabakiPlugin[] = [];
