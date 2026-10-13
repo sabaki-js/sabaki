@@ -1,5 +1,9 @@
-// Téléchargement des poids mini depuis les Releases sabaki-models (sans auth),
-// avec vérification SHA256 et cache local (~/.cache/sabaki).
+/**
+ * Téléchargement des poids `mini` depuis les Releases `sabaki-models`
+ * (sans authentification), avec vérification SHA256 et cache local
+ * (`~/.cache/sabaki/<version>/<workflow>/`). Les fichiers valides ne sont
+ * jamais retéléchargés ; un fichier corrompu est supprimé et signalé.
+ */
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -22,12 +26,28 @@ async function fetchFile(url, dest) {
     await new Promise((resolve, reject) => {
         const w = fs.createWriteStream(dest);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        res.body.pipeTo(new WritableStream({ write: (c) => void w.write(c), close: () => (w.end(), resolve()) })).catch(reject);
+        res.body
+            .pipeTo(new WritableStream({
+            write: (c) => void w.write(c),
+            close: () => (w.end(), resolve()),
+        }))
+            .catch(reject);
         w.on("error", reject);
     });
 }
-/** Prépare le dossier modèle mini pour un workflow (ex. customer_service).
- *  Retourne le chemin utilisable par loadMini(). */
+/**
+ * Prépare le dossier modèle `mini` d'un workflow, prêt pour {@link loadMini}.
+ *
+ * @param {string} workflow - Le workflow (par exemple `"customer_service"`).
+ * @param {string} version - Le tag de release (`"v0.1.0"` par défaut).
+ * @returns {Promise<string>} Le chemin du dossier (`model.json` + ONNX + tokeniseur).
+ * @throws {Error} En cas d'échec réseau ou de SHA256 invalide.
+ * @example
+ * ```ts
+ * const dir = await ensureMiniModel("customer_service");
+ * const mini = await loadMini(dir);
+ * ```
+ */
 export async function ensureMiniModel(workflow, version = "v0.1.0") {
     const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
     const dir = path.join(CACHE, version, workflow);

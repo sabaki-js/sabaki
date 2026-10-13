@@ -1,6 +1,15 @@
+/**
+ * Charge un vocabulaire depuis un `tokenizer.json` Hugging Face.
+ *
+ * @param {unknown} tokenizerJson - Le contenu parsé de `tokenizer.json`.
+ * @returns {MiniVocab} Le vocabulaire indexé.
+ */
 export function loadVocab(tokenizerJson) {
     const t = tokenizerJson;
-    return { vocab: new Map(Object.entries(t.model.vocab)), unk: t.model.unk_token };
+    return {
+        vocab: new Map(Object.entries(t.model.vocab)),
+        unk: t.model.unk_token,
+    };
 }
 function normalize(s) {
     return s
@@ -38,6 +47,14 @@ function wordpiece(word, v) {
     }
     return out;
 }
+/**
+ * Encode un texte en IDs + masque d'attention (tronqué à `maxLen`).
+ *
+ * @param {string} text - Le texte à encoder.
+ * @param {MiniVocab} v - Le vocabulaire (voir `loadVocab`).
+ * @param {number} maxLen - Longueur max, `[CLS]`/`[SEP]` inclus (défaut : 256).
+ * @returns Les `ids` et le `mask` (que des 1 : pas de padding ici).
+ */
 export function encode(text, v, maxLen = 256) {
     let ids = [v.vocab.get("[CLS]")];
     for (const w of basicTokens(normalize(text))) {

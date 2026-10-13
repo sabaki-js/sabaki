@@ -1,5 +1,7 @@
-// Runtime mode mini (ONNX). onnxruntime-node en dépendance optionnelle :
-// importé dynamiquement pour garder le core à zéro dépendance en mode nano.
+/**
+ * Runtime mode `mini` (ONNX). `onnxruntime-node` est optionnel et importé
+ * dynamiquement : le core reste à zéro dépendance en mode `nano`.
+ */
 import { encode, loadVocab } from "./wordpiece.js";
 function softmax(a) {
     const m = Math.max(...a);
@@ -7,6 +9,20 @@ function softmax(a) {
     const s = e.reduce((x, y) => x + y, 0);
     return e.map((x) => x / s);
 }
+/**
+ * Charge un modèle `mini` depuis un dossier préparé par {@link ensureMiniModel}
+ * (`model.json` + `.onnx` + `tokenizer.json`). ~10–25 ms/req sur CPU desktop.
+ *
+ * @param {string} modelDir - Le dossier modèle.
+ * @returns {Promise<MiniModel>} Le modèle (`run(state, question)`).
+ * @throws {Error} Si `onnxruntime-node` n'est pas installé.
+ * @example
+ * ```ts
+ * const mini = await loadMini(await ensureMiniModel("customer_service"));
+ * await mini.run("facture double, remboursement urgent", "category");
+ * // { decision: "billing", confidence: 0.93 }
+ * ```
+ */
 export async function loadMini(modelDir) {
     const [{ default: ort }, fs, path] = await Promise.all([
         import("onnxruntime-node").catch(() => {
@@ -28,7 +44,10 @@ export async function loadMini(modelDir) {
             const Tensor = ort.Tensor;
             const feeds = {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                input_ids: new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
+                input_ids: new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [
+                    1,
+                    ids.length,
+                ]),
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 attention_mask: new Tensor("int64", BigInt64Array.from(mask.map(BigInt)), [1, mask.length]),
             };
