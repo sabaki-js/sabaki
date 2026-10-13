@@ -6,7 +6,8 @@
 - [x] Bench bout-en-bout core+5 plugins (0,59-0,90) + calibration ONNX (ECE<0,14, doute OOD sain)
 - [ ] Publier `sabaki` v0.1.0 + 4 plugins sur npm
 - [x] Plugin `@sabaki-js/mail` v0.2.0 (162 mails, bucket 0,848, suspicious expérimental)
-- [ ] Mail v0.3 : corpus Takeout mbox (export Google en cours)
+- [x] Mail v0.3 : corpus Takeout (4 126 mails, 8 buckets, 0,889 test / 0,769 e2e) — poussé
+- [ ] Mail v0.4 : minilaya-mail (fine-tune) si besoin de dépasser 0,9
 
 ## Moyen terme (minilaya)
 - [x] Fine-tune MiniLM multi-tâches (moy 0,68, agent_trace 0,42->0,73)
