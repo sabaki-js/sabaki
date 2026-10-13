@@ -12,6 +12,16 @@
 - [ ] Vision Doom: oracle recording (400 eps) → SFT → eval kills/survival
 - [ ] ModernBERT-base Doom eval (MiniLM plateaued at 0.57)
 
+## Next: paths for sabaki-doom (vision defends only)
+- [ ] Navigation dataset: record oracle/controller routes on MAP01-style maps
+      (positions, doors, exit as **text states** — our typed format fits navigation
+      better than combat: `direction`/`target`/`open_door` as choice questions)
+- [ ] Train sabaki-doom-nav (MiniLM or bigger student) on route decisions
+- [ ] Two-head runtime: vision policy (combat) + nav decider (routes), arbitrated
+      by a simple rule (enemy visible → combat, else navigate) — same pattern
+      as doomLaya's controller, but learned
+- [ ] Eval: MAP01 exit rate + time, vs Laya v3 reference (61 s)
+
 ## Next: Doom teacher path (decided fallback)
 - [ ] Set up doomLaya stack on GPU (ViZDoom + WADs + controller)
 - [ ] Record Laya-teacher games:
