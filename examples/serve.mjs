@@ -1,0 +1,125 @@
+// sabaki serve — Jev-compatible /v1/systemone subset, backed by mini ONNX
+// models with nano fallback, lazy-loaded per domain.
+// Usage: node examples/serve.mjs [port] — dev tool, add auth before exposing.
+import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const sabaki = await import(HERE + "/../node_modules/sabaki/dist/index.js").catch(
+	async () => await import("sabaki"),
+);
+const { Sabaki, loadMini, ensureMiniModel } = sabaki;
+
+const WF = [
+	"customer_service",
+	"invoice_processing",
+	"security_incidents",
+	"agent_trace_observability",
+];
+const plugins = {};
+for (const wf of WF) {
+	const domain = wf.replace(/_observability$/, "").replace(/_/g, "-");
+	try {
+		const mod = await import(`@sabaki-js/${domain}/dist/index.js`).catch(
+			async () => await import(`@sabaki-js/plugin-${domain}/dist/index.js`),
+		);
+		plugins[wf] = mod.default ?? mod;
+	} catch {
+		console.log(`plugin manquant: ${domain} (repli routage seul)`);
+	}
+}
+
+const s = new Sabaki();
+for (const plug of Object.values(plugins)) s.register(plug);
+const minis = {};
+async function miniFor(wf) {
+	if (!(wf in minis)) {
+		try {
+			minis[wf] = await loadMini(await ensureMiniModel(wf));
+			console.log(`mini chargé: ${wf}`);
+		} catch (e) {
+			console.log(`mini indisponible (${wf}): ${e.message} — repli nano`);
+			minis[wf] = null;
+		}
+	}
+	return minis[wf];
+}
+
+const server = http.createServer(async (req, res) => {
+	const json = (code, obj) => {
+		res.writeHead(code, {
+			"content-type": "application/json",
+			"x-request-id": Math.random().toString(36).slice(2),
+		});
+		res.end(JSON.stringify(obj));
+	};
+	if (req.method === "GET" && req.url === "/health")
+		return json(200, { status: "ok", model: "sabaki-mini" });
+	if (req.method === "GET" && req.url === "/v1/models")
+		return json(200, { data: [{ id: "sabaki-mini" }] });
+	if (req.method === "POST" && req.url === "/v1/systemone") {
+		let body = "";
+		for await (const c of req) body += c;
+		try {
+			const { state, questions } = JSON.parse(body);
+			const st = typeof state === "string" ? state : JSON.stringify(state);
+			const route = s.route(st);
+			const answers = {};
+			for (const [q, spec] of Object.entries(questions ?? {})) {
+				const type =
+					spec.type === "noul" ? "noul" : spec.type === "score" ? "score" : "choice";
+				const mini = await miniFor(route.domain);
+				if (mini && route.plugin) {
+					try {
+						const r = await mini.run(st, q);
+						answers[q] =
+							type === "choice"
+								? {
+										type,
+										choice: r.decision,
+										probabilities: { [r.decision]: r.confidence },
+										confidence: r.confidence,
+									}
+								: type === "score"
+									? {
+											type,
+											score: Number(r.decision),
+											level: Number(r.decision),
+											confidence: r.confidence,
+										}
+									: {
+											type,
+											noul: r.decision === "true" ? r.confidence : 1 - r.confidence,
+											confidence: r.confidence,
+										};
+						continue;
+					} catch {
+						/* repli nano ci-dessous */
+					}
+				}
+				if (route.plugin) {
+					const out = route.plugin.classify({ state: st, question: q });
+					answers[q] = {
+						type: spec.type ?? "choice",
+						choice: out.decision,
+						confidence: out.confidence,
+					};
+				} else {
+					answers[q] = { type: spec.type ?? "choice", choice: null, confidence: 0 };
+				}
+			}
+			return json(200, {
+				model: "sabaki-mini",
+				answers,
+				usage: { input_tokens: st.length >> 2, output_tokens: 0 },
+			});
+		} catch (e) {
+			return json(400, { error: String(e.message ?? e) });
+		}
+	}
+	return json(404, { error: "not found" });
+});
+
+const port = Number(process.argv[2] ?? 8000);
+server.listen(port, () => console.log(`sabaki serve : http://localhost:${port}/v1/systemone`));
