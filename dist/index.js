@@ -85,7 +85,7 @@ export class Sabaki {
             if (kws.length === 0)
                 continue;
             const hits = kws.filter((k) => words.some((w) => w.includes(k) || k.includes(w))).length;
-            const score = hits / kws.length;
+            const score = hits / Math.sqrt(kws.length);
             if (!best || score > best.score)
                 best = { plugin: p, score };
         }
