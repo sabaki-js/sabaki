@@ -30,12 +30,13 @@ function normalize(s: string): string {
 		.normalize("NFD")
 		.replace(/[̀-ͯ]/g, "")
 		.toLowerCase()
-		.replace(/[^\x20-\uFFFF]/g, "");
+		.replace(/[^\x20-\uFFFF]/g, " ");
 }
 
 function basicTokens(s: string): string[] {
+	// HF BERT parity: "_" (Pc) splits like any punctuation.
 	return s
-		.replace(/([^\w\s])/g, " $1 ")
+		.replace(/([^\w\s]|_)/g, " $1 ")
 		.split(/\s+/)
 		.filter(Boolean);
 }
