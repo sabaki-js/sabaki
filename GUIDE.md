@@ -36,7 +36,7 @@ jointly-trained MoE.
 | mode | weights | latency (desktop CPU) | deps | accuracy* |
 |---|---|---|---|---|
 | `nano` | TF-IDF + LogReg, 20–650 KB | <1 ms | none | 0.59–0.90/question |
-| `mini` | MiniLM-L6 ONNX int8, ~22 MB | ~10–25 ms | `onnxruntime-node` (optional) | mean ~0.69, ECE < 0.14 |
+| `mini` | MiniLM-L6 ONNX int8, ~22 MB | ~10–25 ms | `onnxruntime-node` (optional) | mean ~0.64, ECE < 0.14 |
 | `base` | under evaluation (Gemma-270M) | TBD | TBD | TBD |
 
 \* Honest held-out numbers, see §5.
