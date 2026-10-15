@@ -2,6 +2,7 @@
 // models with nano fallback, lazy-loaded per domain.
 // Usage: node examples/serve.mjs [port] - dev tool, add auth before exposing.
 import http from "http";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -90,6 +91,35 @@ const server = http.createServer(async (req, res) => {
 		});
 		res.end(JSON.stringify(obj));
 	};
+	// Statique : site (/) + typedoc (/docs/). workspace: sabaki/examples -> ../../site, ../../docs
+	const statics = [
+		["/docs/", path.join(HERE, "..", "..", "docs")],
+		["/", path.join(HERE, "..", "..", "site")],
+	];
+	if (req.method === "GET") {
+		const url = new URL(req.url, "http://x");
+		for (const [prefix, root] of statics) {
+			if (url.pathname === "/" && prefix !== "/") continue;
+			if (url.pathname === "/" || url.pathname.startsWith(prefix)) {
+				let rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.slice(prefix.length)) || "index.html";
+				if (prefix === "/docs/" && (rel === "index.html" || rel === "")) rel = "typedoc/index.html";
+				const file = path.normalize(path.join(root, rel));
+				if (!file.startsWith(root)) return json(403, { error: "forbidden" });
+				try {
+					const st = fs.statSync(file);
+					const f = st.isDirectory() ? path.join(file, "index.html") : file;
+					const ext = path.extname(f).toLowerCase();
+					const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" }[ext] ?? "application/octet-stream";
+					res.writeHead(200, { "content-type": mime });
+					fs.createReadStream(f).pipe(res);
+					return;
+				} catch {
+					/* pas un fichier statique : routes API ci-dessous */
+				}
+				break;
+			}
+		}
+	}
 	if (req.method === "GET" && req.url === "/health")
 		return json(200, { status: "ok", model: "sabaki-mini" });
 	if (req.method === "GET" && req.url === "/v1/models")
