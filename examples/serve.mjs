@@ -92,8 +92,9 @@ const server = http.createServer(async (req, res) => {
 		res.end(JSON.stringify(obj));
 	};
 	// Statique : site (/) + typedoc (/docs/). workspace: sabaki/examples -> ../../site, ../../docs
+	const DOCS = path.join(HERE, "..", "..", "docs", "typedoc");
 	const statics = [
-		["/docs/", path.join(HERE, "..", "..", "docs")],
+		["/docs/", DOCS],
 		["/", path.join(HERE, "..", "..", "site")],
 	];
 	if (req.method === "GET") {
@@ -107,7 +108,6 @@ const server = http.createServer(async (req, res) => {
 			if (url.pathname === "/" && prefix !== "/") continue;
 			if (url.pathname === "/" || url.pathname.startsWith(prefix)) {
 				let rel = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.slice(prefix.length)) || "index.html";
-				if (prefix === "/docs/" && (rel === "index.html" || rel === "")) rel = "typedoc/index.html";
 				const file = path.normalize(path.join(root, rel));
 				if (!file.startsWith(root)) return json(403, { error: "forbidden" });
 				try {
