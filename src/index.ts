@@ -241,7 +241,9 @@ export class Sabaki {
 	 * @returns {DecideOutput} The decision, its confidence and the plugin.
 	 */
 	decide(input: SabakiInput): DecideOutput {
-		const r = this.route(input.state);
+		const text =
+			typeof input.from === "string" && input.from ? `${input.from} ${input.state}` : input.state;
+		const r = this.route(text);
 		if (r.domain === "unknown" || !r.plugin) {
 			if (this.fallback) {
 				const out = this.fallback.classify(input) as ClassifyOutput | Promise<ClassifyOutput>;
@@ -302,7 +304,9 @@ export class Sabaki {
 	 * ```
 	 */
 	async decideAsync(input: SabakiInput): Promise<DecideOutput> {
-		const r = this.route(input.state);
+		const text =
+			typeof input.from === "string" && input.from ? `${input.from} ${input.state}` : input.state;
+		const r = this.route(text);
 		if (r.domain === "unknown" || !r.plugin) {
 			if (this.fallback) {
 				const out = await this.fallback.classify(input);
