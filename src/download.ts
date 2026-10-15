@@ -133,7 +133,13 @@ export async function ensureMiniModel(
 		const sum = sums[f] ?? sums[base];
 		const ok = fs.existsSync(dest) && sum && (await sha256(dest)) === sum;
 		if (!ok) {
-			await fetchFile(`${releaseBase}/${encodeURIComponent(base)}`, dest);
+			try {
+				await fetchFile(`${releaseBase}/${encodeURIComponent(base)}`, dest);
+			} catch {
+				// Modèles mono-fichier (pas de .onnx.data externe) : optionnel.
+				if (f.endsWith(".onnx.data")) continue;
+				throw new Error(`download ${releaseBase}/${base} failed`);
+			}
 			if (sum && (await sha256(dest)) !== sum) {
 				fs.unlinkSync(dest);
 				throw new Error(`Invalid SHA256 for ${f}`);

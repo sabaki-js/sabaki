@@ -97,6 +97,7 @@ export async function miniClassifier(
 		primary?: string;
 		version?: string;
 		variant?: "int8" | "fp32";
+		joinFrom?: boolean;
 	} = {},
 ): Promise<
 	SabakiPlugin & {
@@ -108,7 +109,9 @@ export async function miniClassifier(
 	const mini = await loadMini(dir);
 	const classifyAsync = async (input: SabakiInput): Promise<ClassifyOutput> => {
 		const q = input.question ?? primary;
-		const r = await mini.run(input.state, q);
+		const from =
+			opts.joinFrom && typeof input.from === "string" ? `${input.from} ` : "";
+		const r = await mini.run(`${from}${input.state}`, q);
 		return {
 			decision: r.decision,
 			confidence: r.confidence,
