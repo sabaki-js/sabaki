@@ -3,6 +3,7 @@
  * Each question: route state → winning specialist (question mapped,
  * else primary) or fallback generalist → Jev-typed answer.
  */
+import { mapQuestion } from "./index.js";
 import type {
 	ClassifyOutput,
 	Sabaki,
@@ -71,17 +72,6 @@ export function validateJevQuestion(q: JevQuestion): string | null {
 }
 
 /**
- * Maps a Jev question onto a specialist's native questions: exact id match,
- * else `instructions` containing a native id, else primary.
- */
-export function mapQuestion(qid: string, q: JevQuestion, native: string[], primary: string): string {
-	if (native.includes(qid)) return qid;
-	const text = `${q.instructions ?? ""} ${q.query ?? ""}`.toLowerCase();
-	const hit = native.find((n) => text.includes(n.toLowerCase()));
-	return hit ?? primary;
-}
-
-/**
  * Answers one Jev question: specialist (mapped) or fallback, Jev shape.
  * Specialists without full maps return `{decision: confidence}` (documented).
  * Returns the responder model id for Jev's `model` field.
@@ -106,7 +96,7 @@ export async function answerJev(
 			native.includes(qid) ||
 			native.some((n) => `${q.instructions ?? ""} ${q.query ?? ""}`.toLowerCase().includes(n.toLowerCase()));
 		if (!explicit || nativeHit) {
-			const question = mapQuestion(qid, q, native, manifest.primary ?? native[0]!);
+			const question = mapQuestion(qid, `${q.instructions ?? ""} ${q.query ?? ""}`, native, manifest.primary ?? native[0]!);
 			const input: SabakiInput = { state, question };
 			const out = (await route.plugin.classify(input)) as ClassifyOutput;
 			// Sans criteria explicites : l'espace de réponse = la décision elle-même.
@@ -117,7 +107,7 @@ export async function answerJev(
 			};
 		}
 	}
-	const out = await sabaki.decideAsync({
+	const out = await sabaki.decideFallback({
 		state,
 		question: q.instructions ?? q.query ?? qid,
 		options,

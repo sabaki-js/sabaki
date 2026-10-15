@@ -110,6 +110,23 @@ function tokens(s: string): string[] {
 /** Global routing threshold when the manifest sets none (see `PluginManifest.threshold`). */
 const ROUTE_THRESHOLD = 0.15;
 
+/**
+ * Maps a requested question onto a plugin's native questions: exact id,
+ * else `instructions`/`query` containing a native id, else primary.
+ * Prevents model lookups on unknown heads (`logits_<question>`).
+ */
+export function mapQuestion(
+	qid: string | undefined,
+	instructions: string | undefined,
+	native: string[],
+	primary: string,
+): string {
+	if (qid && native.includes(qid)) return qid;
+	const text = `${instructions ?? ""}`.toLowerCase();
+	const hit = native.find((n) => text.includes(n.toLowerCase()));
+	return hit ?? primary;
+}
+
 export { featurize, predict } from "./logreg.js";
 export type { ModelWeights, QuestionWeights } from "./logreg.js";
 export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
@@ -118,7 +135,7 @@ export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
 export { loadGeneralist } from "./generalist.js";
 export type { GeneralistInput } from "./generalist.js";
-export { answerJev, criteriaOptions, mapQuestion, toJevAnswer, validateJevQuestion } from "./jev.js";
+export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist } from "./download.js";
 export { definePlugin, miniClassifier, nanoClassifier, autoClassifier } from "./plugin.js";
@@ -235,13 +252,46 @@ export class Sabaki {
 			}
 			return { domain: "unknown", decision: null, confidence: 0, plugin: null };
 		}
-		const out = r.plugin.classify(input) as ClassifyOutput;
+		const manifest = r.plugin.manifest;
+		const native = manifest.questions;
+		const question = mapQuestion(input.question, undefined, native, manifest.primary ?? native[0]!);
+		const out = r.plugin.classify({ ...input, question }) as ClassifyOutput;
 		return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
 	}
 
 	/**
 	 * Async variant: supports `mini` (ONNX), remote and fallback plugins.
 	 * Specialists win by threshold; the fallback only answers `unknown`.
+	 *
+	 * @param {SabakiInput} input - The input (`state`, `question?`, `from?`).
+	 * @returns {Promise<DecideOutput>} The decision, its confidence and the plugin.
+	 * @example
+	 * ```ts
+	 * const r = await sabaki.decideAsync({ state, question: "category" });
+	 * if (r.confidence > 0.8) automate(r);
+	 * ```
+	 */
+	/**
+	 * Invokes the fallback directly, bypassing routing.
+	 * Used when routing wins but the question isn't native
+	 * (explicit `criteria` only a generalist can read).
+	 *
+	 * @param {SabakiInput} input - The input (kept whole: `question`, `options`).
+	 * @returns {Promise<DecideOutput>} The fallback decision, or `unknown` when none.
+	 */
+	async decideFallback(input: SabakiInput): Promise<DecideOutput> {
+		if (this.fallback) {
+			const out = await this.fallback.classify(input);
+			return { ...out, domain: out.domain, plugin: this.fallback.manifest.name };
+		}
+		return { domain: "unknown", decision: null, confidence: 0, plugin: null };
+	}
+
+	/**
+	 * Async variant: supports `mini` (ONNX), remote and fallback plugins.
+	 * The requested question is mapped onto the winner's native questions
+	 * (exact id, else primary) — models never see unknown heads.
+	 * Specialists win by threshold; `unknown` goes to the fallback.
 	 *
 	 * @param {SabakiInput} input - The input (`state`, `question?`, `from?`).
 	 * @returns {Promise<DecideOutput>} The decision, its confidence and the plugin.
@@ -260,7 +310,10 @@ export class Sabaki {
 			}
 			return { domain: "unknown", decision: null, confidence: 0, plugin: null };
 		}
-		const out = await r.plugin.classify(input);
+		const manifest = r.plugin.manifest;
+		const native = manifest.questions;
+		const question = mapQuestion(input.question, undefined, native, manifest.primary ?? native[0]!);
+		const out = await r.plugin.classify({ ...input, question });
 		return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
 	}
 }
