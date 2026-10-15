@@ -35,6 +35,24 @@ for (const wf of WF) {
 
 const s = new Sabaki();
 for (const plug of Object.values(plugins)) s.register(plug);
+// Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
+if (process.env.SABAKI_GENERALIST_DIR) {
+	const { loadGeneralist, definePlugin } = sabaki;
+	const backend = loadGeneralist(process.env.SABAKI_GENERALIST_DIR);
+	s.setFallback(
+		definePlugin({
+			manifest: {
+				name: "@sabaki-js/generalist",
+				domain: "generalist",
+				version: "0.1.0",
+				questions: ["decision"],
+				keywords: [],
+			},
+			classify: (input) => backend.decide(input),
+		}),
+	);
+	console.log("fallback generalist actif");
+}
 const minis = {};
 async function miniFor(wf) {
 	if (!(wf in minis)) {
@@ -113,7 +131,13 @@ const server = http.createServer(async (req, res) => {
 						confidence: out.confidence,
 					};
 				} else {
-					answers[q] = { type: spec.type ?? "choice", choice: null, confidence: 0 };
+					// Fallback generalist (si configuré) ou choice null.
+					const out = await s.decideAsync({
+						state: st,
+						question: typeof spec.query === "string" ? spec.query : q,
+						options: Array.isArray(spec.options) ? spec.options : undefined,
+					});
+					answers[q] = { type, choice: out.decision, confidence: out.confidence };
 				}
 			}
 			return json(200, {
