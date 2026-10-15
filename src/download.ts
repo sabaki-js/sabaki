@@ -102,7 +102,7 @@ export async function ensureMiniModel(
 		try {
 			await fetchFile(`${releaseBase}/${sumsName}`, sumsCached);
 		} catch {
-			// Fallback : releases sans fichier _INT8 (ex v0.1.0) — seul SHA256SUMS.
+			// Fallback : releases sans fichier _INT8 (ex v0.1.0) - seul SHA256SUMS.
 			const fallback = path.join(CACHE, version, "SHA256SUMS");
 			if (sumsCached !== fallback) {
 				if (!fs.existsSync(fallback)) {

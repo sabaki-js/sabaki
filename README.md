@@ -4,9 +4,9 @@
 
 [![npm](https://img.shields.io/npm/v/sabaki)](https://www.npmjs.com/package/sabaki) [![license](https://img.shields.io/npm/l/sabaki)](https://github.com/sabaki-js/sabaki#readme) [![CI](https://github.com/sabaki-js/sabaki/actions/workflows/test-battery.yml/badge.svg)](https://github.com/sabaki-js/sabaki/actions)
 
-**Typed decisions on CPU, in milliseconds — Jev-compatible, plugin-routed, open.**
+**Typed decisions on CPU, in milliseconds - Jev-compatible, plugin-routed, open.**
 
-Sabaki routes an unstructured state to the right classifier and returns a **typed answer** (`choice` / `score` / `noul`) with a calibrated confidence — over an HTTP API that speaks the [System One](https://docs.typesafe.ai/concepts/system-one) contract (`POST /v1/systemone`). No GPU, no prompt engineering, no parsing LLM prose.
+Sabaki routes an unstructured state to the right classifier and returns a **typed answer** (`choice` / `score` / `noul`) with a calibrated confidence - over an HTTP API that speaks the [System One](https://docs.typesafe.ai/concepts/system-one) contract (`POST /v1/systemone`). No GPU, no prompt engineering, no parsing LLM prose.
 
 ```ts
 import { Sabaki } from "sabaki";
@@ -26,10 +26,10 @@ await sabaki.decideAsync({
 | | sabaki nano | sabaki mini | sabaki generalist | OpenDecider | Jev | Laya-td |
 |---|---|---|---|---|---|---|
 | typed-decisions acc. | 0.61 | 0.69 | 0.56 (ep0, training) | 0.796 | 0.754 | 0.766 |
-| CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | ~GPU | API only | ~25 s/state (CPU, disqualified) |
-| Offline / on-prem | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | GPU (~s) | API only | GPU (25 s/state on CPU) |
+| Offline / on-prem | ✅ | ✅ | ✅ | ✅ (GPU) | ❌ | ✅ (GPU) |
 | Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
-| License | MIT | MIT | MIT | — | commercial | Apache-2.0 |
+| License | MIT | MIT | MIT | - | commercial | Apache-2.0 |
 
 *Benchmark: `LocalLLaMA/typed-decisions` test splits (100/workflow), honest splits. Mail bucket8: nano 0.865 anonymized.*
 
@@ -51,7 +51,7 @@ flowchart LR
 
 **Routing** (`route()`): lowercase, unaccented 4+ letter tokens; loose substring match against `manifest.keywords`; score `hits / √|keywords|`; per-plugin `threshold` (default 0.15, mail 0.03). Below threshold → `unknown`, never a guess.
 
-**Plugins** (`definePlugin` / `nanoClassifier` / `miniClassifier` / `autoClassifier`): the minimal contract is `{ manifest, classify }` — sync or async. Specialists ship fixed questions; the generalist answers **runtime-defined** questions (`instructions` + `criteria`, up to 255 options) with one forward pass per option and argmax.
+**Plugins** (`definePlugin` / `nanoClassifier` / `miniClassifier` / `autoClassifier`): the minimal contract is `{ manifest, classify }` - sync or async. Specialists ship fixed questions; the generalist answers **runtime-defined** questions (`instructions` + `criteria`, up to 255 options) with one forward pass per option and argmax.
 
 **Modes**: `nano` (TF-IDF + LogReg, zero deps, <1 ms) → `mini` (MiniLM ONNX int8, 22 MB, SHA256-verified auto-download, ~20 ms) → generalist fallback. `decide()` stays sync (nano); `decideAsync()` unlocks ONNX.
 
@@ -99,7 +99,7 @@ Response shapes follow the System One contract: `choice` → `{choice, probabili
 | `@sabaki-js/doom` | doom (game commands) | nano + mini |
 | `@sabaki-js/generalist` | open questions | cross-encoder |
 
-Or start from [`@sabaki-js/plugin-template`](https://github.com/sabaki-js/plugin-template) — see the [GUIDE](https://github.com/sabaki-js/sabaki/blob/main/GUIDE.md).
+Or start from [`@sabaki-js/plugin-template`](https://github.com/sabaki-js/plugin-template) - see the [GUIDE](https://github.com/sabaki-js/sabaki/blob/main/GUIDE.md).
 
 ## License
 

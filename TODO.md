@@ -1,12 +1,12 @@
 # TODO sabaki
 
 ## Court terme
-- [x] Distillation `mini` : fine-tune > gelé+MLP (0,68 vs 0,65) — voie gelée abandonnée
+- [x] Distillation `mini` : fine-tune > gelé+MLP (0,68 vs 0,65) - voie gelée abandonnée
 - [x] Mode `mini` ONNX câblé (wordpiece TS + onnxruntime-node, 17-26ms) + téléchargement auto depuis Releases
 - [x] Bench bout-en-bout core+5 plugins (0,59-0,90) + calibration ONNX (ECE<0,14, doute OOD sain)
 - [ ] Publier `sabaki` v0.1.0 + 4 plugins sur npm
 - [x] Plugin `@sabaki-js/mail` v0.2.0 (162 mails, bucket 0,848, suspicious expérimental)
-- [x] Mail v0.3 : corpus Takeout (4 126 mails, 8 buckets, 0,889 test / 0,769 e2e) — poussé
+- [x] Mail v0.3 : corpus Takeout (4 126 mails, 8 buckets, 0,889 test / 0,769 e2e) - poussé
 - [ ] Mail v0.4 : minilaya-mail (fine-tune) si besoin de dépasser 0,9
 
 ## Moyen terme (minilaya)
@@ -18,7 +18,7 @@
 - [ ] Calibration (ECE) à la Laya/RLCD (version légère : temperature scaling)
 
 ## Fun / long terme
-- [ ] Plugin `@sabaki-js/doom` : finir (repo créé) — nav MiniLM v2 (3/6 match, DAgger en cours),
+- [ ] Plugin `@sabaki-js/doom` : finir (repo créé) - nav MiniLM v2 (3/6 match, DAgger en cours),
       tête vision SFT (22,6 kills), assemblage two-head en test, vidéos avec overlay
 - [x] Corpus `sabaki-general` : NLI fait (188 988 ex. MNLI/SNLI/ANLI/ChaosNLI en noul/choice → corpus/nli_train.jsonl + calibration.json ; synthétique : harness testé à sec, génération GPU restante, voir corpus/synthetic_TODO.md)
 - [ ] Distillation Laya (licence Apache-2.0 OK, contrairement à Gemma) : Laya-multilingual

@@ -1,8 +1,8 @@
 # Sabaki Guide
 
 Sabaki is a lightweight **typed-decision** router with pluggable classifiers.
-Instead of generating text, it answers typed questions — `choice`, `score`,
-yes/no — with a calibrated probability, in milliseconds on a CPU.
+Instead of generating text, it answers typed questions - `choice`, `score`,
+yes/no - with a calibrated probability, in milliseconds on a CPU.
 
 ```ts
 import { Sabaki } from "sabaki";
@@ -24,11 +24,11 @@ It never guesses: unknown domain → `{ domain: "unknown", decision: null }`.
   thresholds) plus a `classify()` function. Three flavors (see below).
 - **Modes**: `nano` (bundled TF-IDF weights, kilobytes, <1 ms),
   `mini` (downloaded MiniLM ONNX, ~22 MB int8, ~20 ms),
-  `base` (in evaluation — larger students for hard tasks).
+  `base` (in evaluation - larger students for hard tasks).
 
 This is a Mixture-of-Experts at system level: one sparse router, independent
 experts, a single active expert per input. Experts train separately, version
-separately, and ship separately — at the cost of a coarser gate than a
+separately, and ship separately - at the cost of a coarser gate than a
 jointly-trained MoE.
 
 ## 2. Modes in detail
@@ -50,9 +50,9 @@ downloads weights on first use from the public `sabaki-models` releases
 
 Same recipe for every plugin (`train.py` pattern):
 
-1. Collect `(state, gold label)` pairs — public datasets, Gmail labels,
+1. Collect `(state, gold label)` pairs - public datasets, Gmail labels,
    or a Takeout mbox export (labels preserved in `X-Gmail-Labels`).
-2. Deterministic split (every 5th item → test), stratified across time —
+2. Deterministic split (every 5th item → test), stratified across time -
    training on the first-N items only creates temporal bias (measured:
    0.93 in-split vs 0.52 out-of-split on email).
 3. `TfidfVectorizer` (uni+bigrams, 3000–6000 features, sublinear TF) +
@@ -62,7 +62,7 @@ Same recipe for every plugin (`train.py` pattern):
 
 Privacy: anonymize before training (names, emails, phones → placeholders).
 Verified cost on email: −0.024 accuracy for zero personal terms in a 6000-word
-vocabulary. Private training data must never reach public releases —
+vocabulary. Private training data must never reach public releases -
 audit vocabularies with stem-substring matching (bare display names slip
 through compound-only filters; `FOX` ≠ `fox3000foxy`).
 
@@ -80,14 +80,14 @@ through compound-only filters; `FOX` ≠ `fox3000foxy`).
    dropped (worse than fine-tuning on gold labels).
 
 Calibration: minilaya models show healthy doubt on out-of-distribution
-inputs (0.2–0.5 confidence on dragons, recipes and empty strings) — the
+inputs (0.2–0.5 confidence on dragons, recipes and empty strings) - the
 property that makes "automate above 0.8" safe. Temperature scaling is
 planned (see Laya's `fit_temperature_map`).
 
 ## 5. Benchmarks
 
 Typed-decisions (`LocalLLaMA/typed-decisions`, the benchmark Jev, Laya and
-OpenDecider take — 300 train / 100 test per workflow):
+OpenDecider take - 300 train / 100 test per workflow):
 
 | workflow | primary question | nano | mini |
 |---|---|---|---|
@@ -104,7 +104,7 @@ Email (Takeout corpus, 4 126 mails, 8 buckets): nano 0.889 test / 0.769
 end-to-end with routing; MiniLM ties TF-IDF (±0.02), so nano ships.
 
 Doom (doomLaya v3 states, 7 categories): MiniLM and ModernBERT-base plateau
-at ~0.57 — text states lose spatial information. Vision+RL approaches
+at ~0.57 - text states lose spatial information. Vision+RL approaches
 (tiny-doom-defender: 1.1M params from pixels) are the credible path to a
 real player; text classification stays an honest baseline.
 

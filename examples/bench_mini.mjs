@@ -1,4 +1,4 @@
-// Bench JS des minis (sabaki 1.0.1) sur les splits de test — parité avec les scores Python.
+// Bench JS des minis (sabaki 1.0.1) sur les splits de test - parité avec les scores Python.
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";

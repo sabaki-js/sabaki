@@ -1,5 +1,5 @@
 /**
- * Sabaki — core : routing to typed-decision plugins.
+ * Sabaki - core : routing to typed-decision plugins.
  *
  * Zero runtime dependencies in `nano` mode (`onnxruntime-node` is optional
  * and only loaded in `mini` mode, see {@link loadMini}).
@@ -16,7 +16,7 @@
  * ```
  */
 
-/** Typed value returned by a plugin (`choice`, `score`, `noul` — or no answer). */
+/** Typed value returned by a plugin (`choice`, `score`, `noul` - or no answer). */
 export type Decision = string | number | boolean | null;
 
 export interface SabakiInput {
@@ -68,7 +68,7 @@ export interface ClassifyOutput {
 export interface SabakiPlugin {
 	manifest: PluginManifest;
 	/**
-	 * Decides `input`. May be sync (nano) or async (mini, remote) —
+	 * Decides `input`. May be sync (nano) or async (mini, remote) -
 	 * use {@link Sabaki.decideAsync} when in doubt.
 	 */
 	classify: (input: SabakiInput) => ClassifyOutput | Promise<ClassifyOutput>;
@@ -290,7 +290,7 @@ export class Sabaki {
 	/**
 	 * Async variant: supports `mini` (ONNX), remote and fallback plugins.
 	 * The requested question is mapped onto the winner's native questions
-	 * (exact id, else primary) — models never see unknown heads.
+	 * (exact id, else primary) - models never see unknown heads.
 	 * Specialists win by threshold; `unknown` goes to the fallback.
 	 *
 	 * @param {SabakiInput} input - The input (`state`, `question?`, `from?`).

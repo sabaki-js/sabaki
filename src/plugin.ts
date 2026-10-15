@@ -131,7 +131,7 @@ export async function miniClassifier(
  * call) when `miniWorkflow` is set, sync `nano` (bundled weights) otherwise
  * or when the download fails (offline, unknown workflow).
  *
- * Routing is unchanged — only inference upgrades. `decide()` (sync) always
+ * Routing is unchanged - only inference upgrades. `decide()` (sync) always
  * uses nano; `decideAsync()` uses mini once loaded.
  *
  * @param {PluginManifest} manifest - The manifest (domain, questions).

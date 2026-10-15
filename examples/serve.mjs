@@ -1,6 +1,6 @@
-// sabaki serve — Jev-compatible /v1/systemone subset, backed by mini ONNX
+// sabaki serve - Jev-compatible /v1/systemone subset, backed by mini ONNX
 // models with nano fallback, lazy-loaded per domain.
-// Usage: node examples/serve.mjs [port] — dev tool, add auth before exposing.
+// Usage: node examples/serve.mjs [port] - dev tool, add auth before exposing.
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -75,7 +75,7 @@ async function miniFor(wf) {
 			minis[wf] = await loadMini(await ensureMiniModel(wf));
 			console.log(`mini chargé: ${wf}`);
 		} catch (e) {
-			console.log(`mini indisponible (${wf}): ${e.message} — repli nano`);
+			console.log(`mini indisponible (${wf}): ${e.message} - repli nano`);
 			minis[wf] = null;
 		}
 	}

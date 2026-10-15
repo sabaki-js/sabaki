@@ -1,4 +1,4 @@
-"""Temperature scaling par (workflow, question) sur le test split (faute de valid séparé — noté)."""
+"""Temperature scaling par (workflow, question) sur le test split (faute de valid séparé - noté)."""
 import json, os
 import numpy as np
 import onnxruntime as ort
