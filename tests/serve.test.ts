@@ -8,7 +8,11 @@ import {
 } from "../src/index.js";
 import { defineGeneralist } from "../../plugin-generalist/dist/index.js";
 
-const MODEL_DIR = "/home/lsannier/sabaki-js/weights-generalist/generalist-onnx";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const MODEL_DIR =
+	process.env.SABAKI_GENERALIST_DIR ?? path.join(HERE, "..", "..", "weights-generalist", "generalist-onnx");
 
 import csManifest from "../../plugin-customer-service/dist/manifest.json" with { type: "json" };
 import invManifest from "../../plugin-invoice-processing/dist/manifest.json" with { type: "json" };
