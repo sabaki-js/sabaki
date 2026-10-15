@@ -117,11 +117,7 @@ export async function miniClassifier(
 	};
 	return {
 		manifest,
-		classify: () => {
-			throw new Error(
-				"plugin mini : utilisez classifyAsync() (inférence asynchrone)",
-			);
-		},
+		classify: classifyAsync,
 		classifyAsync,
 	};
 }

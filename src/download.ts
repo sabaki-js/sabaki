@@ -1,7 +1,7 @@
 /**
  * Downloads `mini` weights from the `sabaki-models` Releases
  * (no authentication), with SHA256 verification and local cache
- * (`~/.cache/sabaki/<version>/<workflow>/`). Valid files are never
+ * (`~/.cache/sabaki/<version>/<workflow>-<variant>/`). Valid files are never
  * re-downloaded; a corrupted file is deleted and reported.
  */
 import fs from "fs";
@@ -9,8 +9,6 @@ import path from "path";
 import crypto from "crypto";
 import os from "os";
 
-const RELEASE =
-	"https://github.com/sabaki-js/sabaki-models/releases/download/v0.1.0";
 const CACHE = path.join(os.homedir(), ".cache", "sabaki");
 
 function sha256(file: string): Promise<string> {
@@ -56,7 +54,20 @@ export async function ensureMiniModel(
 	const sumsName = variant === "int8" ? "SHA256SUMS_INT8" : "SHA256SUMS";
 	const sumsCached = path.join(CACHE, version, sumsName);
 	if (!fs.existsSync(sumsCached)) {
-		await fetchFile(`${releaseBase}/${sumsName}`, sumsCached);
+		try {
+			await fetchFile(`${releaseBase}/${sumsName}`, sumsCached);
+		} catch {
+			// Fallback : releases sans fichier _INT8 (ex v0.1.0) — seul SHA256SUMS.
+			const fallback = path.join(CACHE, version, "SHA256SUMS");
+			if (sumsCached !== fallback) {
+				if (!fs.existsSync(fallback)) {
+					await fetchFile(`${releaseBase}/SHA256SUMS`, fallback);
+				}
+				fs.copyFileSync(fallback, sumsCached);
+			} else {
+				throw new Error(`download ${releaseBase}/${sumsName} failed`);
+			}
+		}
 	}
 	for (const line of fs.readFileSync(sumsCached, "utf8").split("\n")) {
 		const m = line.match(/^([0-9a-f]{64})\s+(.+)$/);
@@ -66,7 +77,7 @@ export async function ensureMiniModel(
 		`minilaya-onnx/${workflow}${suffix}.onnx`,
 		`minilaya-onnx/${workflow}${suffix}.onnx.data`,
 	];
-	const metaBase = `https://github.com/sabaki-js/sabaki-models/releases/download/v0.1.0`;
+	const metaBase = releaseBase;
 	const meta = [
 		`minilaya-onnx/${workflow}.json`,
 		"minilaya-onnx/tokenizer/tokenizer.json",
@@ -87,8 +98,15 @@ export async function ensureMiniModel(
 	for (const f of meta) {
 		const base = path.basename(f);
 		const dest = path.join(dir, base);
-		if (!fs.existsSync(dest) || (await sha256(dest)) === "") {
+		const sum = sums[f] ?? sums[base];
+		const ok =
+			fs.existsSync(dest) && (!sum || (await sha256(dest)) === sum);
+		if (!ok) {
 			await fetchFile(`${metaBase}/${encodeURIComponent(base)}`, dest);
+			if (sum && (await sha256(dest)) !== sum) {
+				fs.unlinkSync(dest);
+				throw new Error(`Invalid SHA256 for ${f}`);
+			}
 		}
 	}
 	const tempFile = path.join(dir, "temperatures.json");

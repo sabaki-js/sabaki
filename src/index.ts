@@ -46,7 +46,7 @@ export interface PluginManifest {
 	/** Routing keywords (see `Sabaki.route` for scoring). */
 	keywords: string[];
 	/**
-	 * Routing threshold (fraction of matched keywords). Default: `0.15`.
+	 * Routing threshold on `hits / sqrt(|keywords|)`. Default: `0.15`.
 	 * Short subjects (emails): `0.05`. Below it, the domain is `"unknown"`.
 	 */
 	threshold?: number;
@@ -125,6 +125,7 @@ export type { DefinePluginOptions } from "./plugin.js";
  */
 export class Sabaki {
 	private plugins: SabakiPlugin[] = [];
+	private kwsCache = new Map<SabakiPlugin, string[]>();
 
 	/**
 	 * Registers a plugin (`{ manifest, classify }` object or import default).
@@ -142,12 +143,16 @@ export class Sabaki {
 			throw new Error("plugin invalide (manifest.domain + classify requis)");
 		}
 		this.plugins.push(plugin);
+		this.kwsCache.set(
+			plugin,
+			(plugin.manifest.keywords ?? []).map((k) => k.toLowerCase()),
+		);
 		return this;
 	}
 
 	/**
-	 * Picks the domain without deciding: fraction of manifest keywords
-	 * found in the state (loose sense: inclusion either way).
+	 * Picks the domain without deciding: `hits / sqrt(|keywords|)`,
+	 * hit = loose inclusion either way (`w.includes(k) || k.includes(w)`).
 	 *
 	 * @param {string} state - The state to route.
 	 * @returns The domain, the confidence (= the score) and the plugin, or `unknown`.
@@ -160,7 +165,7 @@ export class Sabaki {
 		const words = tokens(state);
 		let best: { plugin: SabakiPlugin; score: number } | null = null;
 		for (const p of this.plugins) {
-			const kws = p.manifest.keywords.map((k) => k.toLowerCase());
+			const kws = this.kwsCache.get(p) ?? [];
 			if (kws.length === 0) continue;
 			const hits = kws.filter((k) =>
 				words.some((w) => w.includes(k) || k.includes(w)),
