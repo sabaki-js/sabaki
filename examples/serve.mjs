@@ -37,9 +37,11 @@ for (const wf of WF) {
 }
 
 const s = new Sabaki();
+const sNano = new Sabaki();
 for (const plug of Object.values(plugins)) {
 	// Variante mini si le workflow existe en ONNX, sinon nano tel quel.
 	const wf = plug.manifest.domain;
+	sNano.register(plug);
 	try {
 		s.register(await miniClassifier(plug.manifest, wf));
 		console.log(`spécialiste mini: ${wf}`);
@@ -52,18 +54,18 @@ for (const plug of Object.values(plugins)) {
 if (process.env.SABAKI_GENERALIST_DIR) {
 	const { loadGeneralist, definePlugin } = sabaki;
 	const backend = loadGeneralist(process.env.SABAKI_GENERALIST_DIR);
-	s.setFallback(
-		definePlugin({
-			manifest: {
-				name: "@sabaki-js/generalist",
-				domain: "generalist",
-				version: "0.1.0",
-				questions: ["decision"],
-				keywords: [],
-			},
-			classify: (input) => backend.decide(input),
-		}),
-	);
+	const fb = definePlugin({
+		manifest: {
+			name: "@sabaki-js/generalist",
+			domain: "generalist",
+			version: "0.1.0",
+			questions: ["decision"],
+			keywords: [],
+		},
+		classify: (input) => backend.decide(input),
+	});
+	s.setFallback(fb);
+	sNano.setFallback(fb);
 	console.log("fallback generalist actif");
 }
 const minis = {};
@@ -96,16 +98,22 @@ const server = http.createServer(async (req, res) => {
 		let body = "";
 		for await (const c of req) body += c;
 		try {
-			const { state, questions } = JSON.parse(body);
+			const { state, questions, mode } = JSON.parse(body);
 			const st = typeof state === "string" ? state : JSON.stringify(state ?? "");
 			if (!questions || typeof questions !== "object")
 				return json(422, { error: "questions requises" });
+			if (mode !== undefined && mode !== "auto" && mode !== "nano" && mode !== "mini")
+				return json(422, { error: "mode: auto|nano|mini" });
+			// mode nano : routeur nano only ; mini : 422 si pas de mini ; auto : mini puis nano.
+			const router = mode === "nano" ? sNano : s;
 			const answers = {};
 			const models = new Set();
 			for (const [q, spec] of Object.entries(questions)) {
 				const err = validateJevQuestion(spec);
 				if (err) return json(422, { error: `${q}: ${err}` });
-				const { answer, model } = await answerJev(s, st, q, spec);
+				const { answer, model } = await answerJev(router, st, q, spec);
+				if (mode === "mini" && model.endsWith("+nano"))
+					return json(422, { error: `${q}: mini indisponible (nano only)` });
 				answers[q] = answer;
 				models.add(model);
 			}
