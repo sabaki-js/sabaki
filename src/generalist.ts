@@ -38,11 +38,10 @@ export function loadGeneralist(modelDir: string) {
 	let p = cache.get(modelDir);
 	if (!p) {
 		p = (async () => {
-			const [{ default: ort }] = await Promise.all([
-				import("onnxruntime-node").catch(() => {
-					throw new Error("generalist requiert onnxruntime-node");
-				}),
-			]);
+			const ortMod = await import("onnxruntime-node").catch(() => {
+				throw new Error("generalist requiert onnxruntime-node");
+			});
+			const ort = (ortMod.default ?? ortMod) as typeof ortMod.default;
 			const vocab = loadVocab(
 				JSON.parse(
 					fs.readFileSync(path.join(modelDir, "tokenizer", "tokenizer.json"), "utf8"),

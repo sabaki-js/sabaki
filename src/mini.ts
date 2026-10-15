@@ -33,7 +33,7 @@ function softmax(a: number[]): number[] {
  * ```
  */
 export async function loadMini(modelDir: string): Promise<MiniModel> {
-	const [{ default: ort }, fs, path] = await Promise.all([
+	const [ortMod, fs, path] = await Promise.all([
 		import("onnxruntime-node").catch(() => {
 			throw new Error(
 				"mode mini requiert onnxruntime-node : npm i onnxruntime-node",
@@ -42,6 +42,7 @@ export async function loadMini(modelDir: string): Promise<MiniModel> {
 		import("fs"),
 		import("path"),
 	]);
+	const ort = (ortMod.default ?? ortMod) as typeof ortMod.default;
 	const { model, config } = JSON.parse(
 		fs.readFileSync(path.join(modelDir, "model.json"), "utf8"),
 	) as {

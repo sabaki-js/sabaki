@@ -1,0 +1,68 @@
+import { strict as assert } from "node:assert";
+import {
+	Sabaki,
+	answerJev,
+	miniClassifier,
+	validateJevQuestion,
+	type SabakiPlugin,
+} from "../src/index.js";
+import { defineGeneralist } from "../../plugin-generalist/dist/index.js";
+
+const MODEL_DIR = "/home/lsannier/sabaki-js/weights-generalist/generalist-onnx";
+
+const MANIFESTS = [
+	{ name: "@sabaki-js/customer-service", domain: "customer_service", version: "1.0.0", questions: ["action", "category"], keywords: ["billing", "refund", "cancel", "account"] },
+	{ name: "@sabaki-js/invoice-processing", domain: "invoice_processing", version: "1.0.0", questions: ["duplicate", "disposition"], keywords: ["invoice", "freight", "vendor", "payment"] },
+	{ name: "@sabaki-js/security-incidents", domain: "security_incidents", version: "1.0.0", questions: ["disposition", "severity"], keywords: ["login", "password", "locked", "breach"] },
+	{ name: "@sabaki-js/agent-trace-observability", domain: "agent_trace_observability", version: "1.0.0", questions: ["needs_review", "risk"], keywords: ["trace", "autonomy", "constraints", "agent"] },
+];
+
+const s = new Sabaki();
+for (const m of MANIFESTS) {
+	s.register(await miniClassifier(m as never, m.domain));
+}
+s.setFallback(defineGeneralist(MODEL_DIR));
+console.log("4 minis + fallback chargés");
+
+// Autorouting : chaque état vers son plugin.
+const routes: Array<[string, string]> = [
+	["Customer with lifetime value 1200 complains about double billing, wants a refund today or will cancel", "customer_service"],
+	["Invoice total 4500 with freight and unit lines from vendor, payment due in 30 days", "invoice_processing"],
+	["Multiple failed logins from unknown source, account locked, change password window active", "security_incidents"],
+	["Agent trace shows model ignored internal constraints, autonomy never granted for this task", "agent_trace_observability"],
+	["I want a pizza with extra cheese", "unknown"], // -> fallback generalist
+];
+for (const [state, expected] of routes) {
+	const r = s.route(state);
+	const got = r.domain;
+	assert.equal(got, expected, `route ${expected}`);
+	console.log(`PASS route -> ${got}`);
+}
+
+// Schémas Jev par type, via answerJev (même chemin que serve).
+const st = "Customer with lifetime value 1200 complains about double billing";
+const ch = await answerJev(s, st, "category", { type: "choice", instructions: "Classify.", criteria: { billing: null, technical: null } });
+assert.equal(ch.answer.type, "choice");
+assert.ok(ch.answer.choice && ch.answer.probabilities && typeof ch.answer.confidence === "number");
+assert.ok(ch.model.includes("customer-service"), `model: ${ch.model}`);
+console.log(`PASS choice -> ${ch.model} :: ${ch.answer.choice} ${ch.answer.confidence}`);
+
+const no = await answerJev(s, st, "churn", { type: "noul", instructions: "Will churn?" });
+assert.equal(no.answer.type, "noul");
+assert.ok(typeof no.answer.noul === "number" && !("confidence" in no.answer));
+console.log(`PASS noul -> ${no.model} :: ${no.answer.noul}`);
+
+const sc = await answerJev(s, st, "urg", { type: "score", instructions: "Urgency?", criteria: ["low", "high"] });
+assert.equal(sc.answer.type, "score");
+assert.ok(typeof sc.answer.score === "number" && sc.answer.legend && sc.answer.probabilities);
+console.log(`PASS score -> ${sc.model} :: ${sc.answer.score}`);
+
+const fb = await answerJev(s, "I want a pizza", "i", { type: "choice", instructions: "Which intent?", criteria: { order_food: null, taxes: null } });
+assert.ok(fb.model.includes("generalist"), `fallback model: ${fb.model}`);
+console.log(`PASS fallback -> ${fb.model} :: ${fb.answer.choice}`);
+
+// 422.
+assert.equal(validateJevQuestion({ type: "choice" } as never), "instructions requises");
+assert.ok(validateJevQuestion({ type: "score", instructions: "x?", criteria: ["a"] })!.includes("2-10"));
+console.log("PASS 422");
+console.log("serve e2e: OK");

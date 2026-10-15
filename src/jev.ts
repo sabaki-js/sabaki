@@ -105,7 +105,7 @@ export async function answerJev(
 		const opts = q.criteria || q.options ? options : [String(out.decision)];
 		return {
 			answer: toJevAnswer(q.type, opts, out),
-			model: `${manifest.name}@${manifest.version}+nano`,
+			model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
 		};
 	}
 	const out = await sabaki.decideAsync({

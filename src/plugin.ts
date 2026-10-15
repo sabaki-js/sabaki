@@ -115,8 +115,9 @@ export async function miniClassifier(
 			domain: manifest.domain,
 		};
 	};
+	const active = { ...manifest, modes: { ...manifest.modes, active: "mini" } };
 	return {
-		manifest,
+		manifest: active,
 		classify: classifyAsync,
 		classifyAsync,
 	};
