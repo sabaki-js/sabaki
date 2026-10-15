@@ -10,16 +10,17 @@ import { defineGeneralist } from "../../plugin-generalist/dist/index.js";
 
 const MODEL_DIR = "/home/lsannier/sabaki-js/weights-generalist/generalist-onnx";
 
-const MANIFESTS = [
-	{ name: "@sabaki-js/customer-service", domain: "customer_service", version: "1.0.0", questions: ["action", "category"], keywords: ["billing", "refund", "cancel", "account"] },
-	{ name: "@sabaki-js/invoice-processing", domain: "invoice_processing", version: "1.0.0", questions: ["duplicate", "disposition"], keywords: ["invoice", "freight", "vendor", "payment"] },
-	{ name: "@sabaki-js/security-incidents", domain: "security_incidents", version: "1.0.0", questions: ["disposition", "severity"], keywords: ["login", "password", "locked", "breach"] },
-	{ name: "@sabaki-js/agent-trace-observability", domain: "agent_trace_observability", version: "1.0.0", questions: ["needs_review", "risk"], keywords: ["trace", "autonomy", "constraints", "agent"] },
-];
+import csManifest from "../../plugin-customer-service/dist/manifest.json" with { type: "json" };
+import invManifest from "../../plugin-invoice-processing/dist/manifest.json" with { type: "json" };
+import siManifest from "../../plugin-security-incidents/dist/manifest.json" with { type: "json" };
+import atManifest from "../../plugin-agent-trace-observability/dist/manifest.json" with { type: "json" };
+import type { PluginManifest } from "../src/index.js";
+
+const MANIFESTS = [csManifest, invManifest, siManifest, atManifest] as PluginManifest[];
 
 const s = new Sabaki();
 for (const m of MANIFESTS) {
-	s.register(await miniClassifier(m as never, m.domain));
+	s.register(await miniClassifier(m, m.domain));
 }
 s.setFallback(defineGeneralist(MODEL_DIR));
 console.log("4 minis + fallback chargés");
