@@ -51,6 +51,7 @@ export async function loadMini(modelDir: string): Promise<MiniModel> {
 			questions: string[];
 			classes: Record<string, string[]>;
 			temperatures?: Record<string, number>;
+			platt?: Record<string, { t: number; b: number[] }>;
 		};
 	};
 	const vocab = loadVocab(
@@ -84,8 +85,11 @@ export async function loadMini(modelDir: string): Promise<MiniModel> {
 				{ data: ArrayLike<number> }
 			>;
 			const raw = Array.from(out[`logits_${question}`]!.data);
-			const temp = config.temperatures?.[question] ?? 1;
-			const p = softmax(raw.map((x) => x / temp));
+			// Calibration : Platt (T + biais) si présent, sinon temperature simple.
+			const pl = config.platt?.[question];
+			const temp = pl?.t ?? config.temperatures?.[question] ?? 1;
+			const adj = raw.map((x, i) => x / temp + (pl?.b[i] ?? 0));
+			const p = softmax(adj);
 			let bi = 0;
 			p.forEach((v, i) => {
 				if (v > p[bi]!) bi = i;
