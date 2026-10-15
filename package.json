@@ -64,6 +64,12 @@
 		}
 	},
 	"optionalDependencies": {
-		"onnxruntime-node": "^1.22.0"
+		"onnxruntime-node": "^1.22.0",
+		"@sabaki-js/customer-service": "^1.0.0",
+		"@sabaki-js/invoice-processing": "^1.0.0",
+		"@sabaki-js/security-incidents": "^1.0.0",
+		"@sabaki-js/agent-trace-observability": "^1.0.0",
+		"@sabaki-js/mail": "^1.0.0",
+		"@sabaki-js/doom": "^1.0.0"
 	}
 }
