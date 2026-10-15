@@ -98,15 +98,24 @@ export async function answerJev(
 	if (route.plugin) {
 		const manifest = route.plugin.manifest;
 		const native = manifest.questions;
-		const question = mapQuestion(qid, q, native, manifest.primary ?? native[0]!);
-		const input: SabakiInput = { state, question };
-		const out = (await route.plugin.classify(input)) as ClassifyOutput;
-		// Sans criteria explicites : l'espace de réponse = la décision elle-même.
-		const opts = q.criteria || q.options ? options : [String(out.decision)];
-		return {
-			answer: toJevAnswer(q.type, opts, out),
-			model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
-		};
+		// Spécialiste : seulement sa question native (id exact ou via instructions).
+		// Critères explicites sur question non native -> fallback (seul le
+		// generalist lit vraiment des critères arbitraires).
+		const explicit = q.criteria || q.options;
+		const nativeHit =
+			native.includes(qid) ||
+			native.some((n) => `${q.instructions ?? ""} ${q.query ?? ""}`.toLowerCase().includes(n.toLowerCase()));
+		if (!explicit || nativeHit) {
+			const question = mapQuestion(qid, q, native, manifest.primary ?? native[0]!);
+			const input: SabakiInput = { state, question };
+			const out = (await route.plugin.classify(input)) as ClassifyOutput;
+			// Sans criteria explicites : l'espace de réponse = la décision elle-même.
+			const opts = explicit ? options : [String(out.decision)];
+			return {
+				answer: toJevAnswer(q.type, opts, out),
+				model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
+			};
+		}
 	}
 	const out = await sabaki.decideAsync({
 		state,
