@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
-import { Sabaki, type SabakiPlugin } from "./index.js";
-import keywords from "./default-keywords.json" with { type: "json" };
+import { Sabaki, type SabakiPlugin } from "../src/index.js";
+import keywords from "../src/default-keywords.json" with { type: "json" };
 
 const kw = keywords as unknown as Record<string, string[]>;
 const domains = Object.keys(kw);

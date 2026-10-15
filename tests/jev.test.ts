@@ -7,7 +7,7 @@ import {
 	toJevAnswer,
 	validateJevQuestion,
 	type SabakiPlugin,
-} from "./index.js";
+} from "../src/index.js";
 
 // Spécialistes factices : 2 questions chacun, sync (nano-like).
 function dummy(domain: string, keywords: string[], questions: string[]): SabakiPlugin {

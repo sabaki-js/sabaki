@@ -28,7 +28,7 @@
 		"check": "bunx --bun @biomejs/biome check ./src",
 		"lint": "bunx --bun @biomejs/biome lint ./src",
 		"lint:write": "bunx --bun @biomejs/biome lint --write ./src",
-		"test": "bunx --bun @biomejs/biome test ./src",
+		"test": "bunx --bun @biomejs/biome test ./tests",
 		"build": "tsc --project tsconfig.json && cp src/default-keywords.json dist/",
 		"deploy:npm": "npm publish --access public",
 		"publish-package": "bash ./scripts/publish-package.sh"
