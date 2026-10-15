@@ -11,7 +11,7 @@ const sabaki = await import(HERE + "/../dist/index.js").catch(
 		async () => await import("sabaki"),
 	),
 );
-const { Sabaki, loadMini, ensureMiniModel } = sabaki;
+const { Sabaki, loadMini, ensureMiniModel, miniClassifier, answerJev, validateJevQuestion } = sabaki;
 
 const WF = [
 	"customer_service",
@@ -37,7 +37,17 @@ for (const wf of WF) {
 }
 
 const s = new Sabaki();
-for (const plug of Object.values(plugins)) s.register(plug);
+for (const plug of Object.values(plugins)) {
+	// Variante mini si le workflow existe en ONNX, sinon nano tel quel.
+	const wf = plug.manifest.domain;
+	try {
+		s.register(await miniClassifier(plug.manifest, wf));
+		console.log(`spécialiste mini: ${wf}`);
+	} catch {
+		s.register(plug);
+		console.log(`spécialiste nano: ${wf}`);
+	}
+}
 // Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
 if (process.env.SABAKI_GENERALIST_DIR) {
 	const { loadGeneralist, definePlugin } = sabaki;
@@ -87,64 +97,20 @@ const server = http.createServer(async (req, res) => {
 		for await (const c of req) body += c;
 		try {
 			const { state, questions } = JSON.parse(body);
-			const st = typeof state === "string" ? state : JSON.stringify(state);
-			const route = s.route(st);
+			const st = typeof state === "string" ? state : JSON.stringify(state ?? "");
+			if (!questions || typeof questions !== "object")
+				return json(422, { error: "questions requises" });
 			const answers = {};
-			for (const [q, spec] of Object.entries(questions ?? {})) {
-				const type =
-					spec.type === "noul" ? "noul" : spec.type === "score" ? "score" : "choice";
-				// Le plugin ne connaît que ses questions entraînées : on répond avec
-				// sa question primaire sous le nom demandé (comportement type Jev).
-				const mini = await miniFor(route.domain);
-				if (mini && route.plugin) {
-					try {
-						const primary =
-							route.plugin.manifest.primary ?? route.plugin.manifest.questions[0];
-						const r = await mini.run(st, primary);
-						answers[q] =
-							type === "choice"
-								? {
-										type,
-										choice: r.decision,
-										probabilities: { [r.decision]: r.confidence },
-										confidence: r.confidence,
-									}
-								: type === "score"
-									? {
-											type,
-											score: Number(r.decision),
-											level: Number(r.decision),
-											confidence: r.confidence,
-										}
-									: {
-											type,
-											noul: r.decision === "true" ? r.confidence : 1 - r.confidence,
-											confidence: r.confidence,
-										};
-						continue;
-					} catch {
-						/* repli nano ci-dessous */
-					}
-				}
-				if (route.plugin) {
-					const out = route.plugin.classify({ state: st });
-					answers[q] = {
-						type: spec.type ?? "choice",
-						choice: out.decision,
-						confidence: out.confidence,
-					};
-				} else {
-					// Fallback generalist (si configuré) ou choice null.
-					const out = await s.decideAsync({
-						state: st,
-						question: typeof spec.query === "string" ? spec.query : q,
-						options: Array.isArray(spec.options) ? spec.options : undefined,
-					});
-					answers[q] = { type, choice: out.decision, confidence: out.confidence };
-				}
+			const models = new Set();
+			for (const [q, spec] of Object.entries(questions)) {
+				const err = validateJevQuestion(spec);
+				if (err) return json(422, { error: `${q}: ${err}` });
+				const { answer, model } = await answerJev(s, st, q, spec);
+				answers[q] = answer;
+				models.add(model);
 			}
 			return json(200, {
-				model: "sabaki-mini",
+				model: models.size === 1 ? [...models][0] : `sabaki-routed(${[...models].join(",")})`,
 				answers,
 				usage: { input_tokens: st.length >> 2, output_tokens: 0 },
 			});
