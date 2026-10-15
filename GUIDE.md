@@ -108,6 +108,24 @@ at ~0.57 - text states lose spatial information. Vision+RL approaches
 (tiny-doom-defender: 1.1M params from pixels) are the credible path to a
 real player; text classification stays an honest baseline.
 
+## 5b. Drift (batch effects) and calibration protocol
+
+Typed-decisions is synthetically generated in batches, and its temporal
+split is effectively a **batch split**: `drift_tool.py` measures
+train-vs-test separability (customer_service 0.82, agent_trace 0.67 —
+0.5 means indistinguishable). Label drift is small; vocabulary style
+shifts (`please` 0.46→0.24).
+
+Consequences, all verified:
+- Published weights score **0.733 mean on a mixed test** vs 0.61 on the
+  official split: the models are robust, the official number is conservative.
+- A reshuffled retrain scores **worse**: do not retrain, do not resplit.
+- Calibration (Platt, temperature+bias, 5-fold + refits + recency
+  reweighting) does **not** transfer across batches: ECE degrades almost
+  everywhere. Ship temperature scaling only; calibrate on recent batches.
+
+Rule for new corpora: run `drift_tool.py` first (warn > 0.6, block > 0.8).
+
 ## 6. Serving (`systemone`-compatible)
 
 `sabaki serve` speaks a Jev-compatible `/v1/systemone` subset
