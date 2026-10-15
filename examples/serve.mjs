@@ -98,6 +98,11 @@ const server = http.createServer(async (req, res) => {
 	];
 	if (req.method === "GET") {
 		const url = new URL(req.url, "http://x");
+		if (url.pathname === "/docs") {
+			res.writeHead(301, { location: "/docs/" });
+			res.end();
+			return;
+		}
 		for (const [prefix, root] of statics) {
 			if (url.pathname === "/" && prefix !== "/") continue;
 			if (url.pathname === "/" || url.pathname.startsWith(prefix)) {
