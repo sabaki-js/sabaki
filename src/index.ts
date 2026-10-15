@@ -166,7 +166,12 @@ export class Sabaki {
 		let best: { plugin: SabakiPlugin; score: number } | null = null;
 		for (const p of this.plugins) {
 			const kws = this.kwsCache.get(p) ?? [];
-			if (kws.length === 0) continue;
+			if (kws.length === 0) {
+				// Plugin catch-all (ex generalist) : route toujours, au seuil.
+				const t = p.manifest.threshold ?? ROUTE_THRESHOLD;
+				if (!best || t > best.score) best = { plugin: p, score: t };
+				continue;
+			}
 			const hits = kws.filter((k) =>
 				words.some((w) => w.includes(k) || k.includes(w)),
 			).length;
