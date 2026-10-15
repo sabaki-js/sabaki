@@ -114,6 +114,8 @@ export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
 export type { MiniVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
+export { loadGeneralist } from "./generalist.js";
+export type { GeneralistInput } from "./generalist.js";
 export { ensureMiniModel } from "./download.js";
 export { definePlugin, miniClassifier, nanoClassifier } from "./plugin.js";
 export type { DefinePluginOptions } from "./plugin.js";
@@ -126,6 +128,25 @@ export type { DefinePluginOptions } from "./plugin.js";
 export class Sabaki {
 	private plugins: SabakiPlugin[] = [];
 	private kwsCache = new Map<SabakiPlugin, string[]>();
+	/**
+	 * Fallback (typically the bundled generalist): answers when no
+	 * registered specialist wins routing. Only registered (= installed)
+	 * specialists ever decide; the fallback never preempts them.
+	 */
+	private fallback: SabakiPlugin | null = null;
+
+	/**
+	 * Sets the fallback plugin (e.g. generalist cross-encoder).
+	 * @param {SabakiPlugin | null} plugin - The fallback, or `null` to clear.
+	 * @returns {this} The instance (chainable).
+	 */
+	setFallback(plugin: SabakiPlugin | null): this {
+		if (plugin !== null && (!plugin?.manifest?.domain || typeof plugin.classify !== "function")) {
+			throw new Error("plugin invalide (manifest.domain + classify requis)");
+		}
+		this.fallback = plugin;
+		return this;
+	}
 
 	/**
 	 * Registers a plugin (`{ manifest, classify }` object or import default).
@@ -193,7 +214,7 @@ export class Sabaki {
 
 	/**
 	 * Routes, then lets the plugin decide (sync path, `nano` mode).
-	 * Never guesses: unknown domain → `decision: null`.
+	 * No specialist above threshold → sync fallback, else `decision: null`.
 	 *
 	 * @param {SabakiInput} input - The input (`state`, `question?`, `from?`).
 	 * @returns {DecideOutput} The decision, its confidence and the plugin.
@@ -201,6 +222,13 @@ export class Sabaki {
 	decide(input: SabakiInput): DecideOutput {
 		const r = this.route(input.state);
 		if (r.domain === "unknown" || !r.plugin) {
+			if (this.fallback) {
+				const out = this.fallback.classify(input) as ClassifyOutput | Promise<ClassifyOutput>;
+				if (out && typeof (out as Promise<ClassifyOutput>).then !== "function") {
+					const sync = out as ClassifyOutput;
+					return { ...sync, domain: sync.domain, plugin: this.fallback.manifest.name };
+				}
+			}
 			return { domain: "unknown", decision: null, confidence: 0, plugin: null };
 		}
 		const out = r.plugin.classify(input) as ClassifyOutput;
@@ -208,8 +236,8 @@ export class Sabaki {
 	}
 
 	/**
-	 * Async variant: supports `mini` (ONNX) and remote plugins.
-	 * Also works with sync plugins.
+	 * Async variant: supports `mini` (ONNX), remote and fallback plugins.
+	 * Specialists win by threshold; the fallback only answers `unknown`.
 	 *
 	 * @param {SabakiInput} input - The input (`state`, `question?`, `from?`).
 	 * @returns {Promise<DecideOutput>} The decision, its confidence and the plugin.
@@ -222,6 +250,10 @@ export class Sabaki {
 	async decideAsync(input: SabakiInput): Promise<DecideOutput> {
 		const r = this.route(input.state);
 		if (r.domain === "unknown" || !r.plugin) {
+			if (this.fallback) {
+				const out = await this.fallback.classify(input);
+				return { ...out, domain: out.domain, plugin: this.fallback.manifest.name };
+			}
 			return { domain: "unknown", decision: null, confidence: 0, plugin: null };
 		}
 		const out = await r.plugin.classify(input);
