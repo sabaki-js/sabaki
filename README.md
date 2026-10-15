@@ -58,7 +58,8 @@ flowchart LR
 ## Jev-compatible serving
 
 ```sh
-npm i sabaki onnxruntime-node   # specialists + minis come as optional deps
+npm i sabaki   # specialists, minis + onnxruntime arrive as optional deps
+# nano-only (no ONNX): npm i sabaki --omit=optional
 node --input-type=module -e \
   "await (await import('sabaki')).ensureGeneralist()"  # one-time ~90 MB, SHA-verified
 SABAKI_GENERALIST_DIR=~/.cache/sabaki/v0.4.0/generalist \
