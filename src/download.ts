@@ -41,6 +41,51 @@ async function fetchFile(url: string, dest: string): Promise<void> {
  * const mini = await loadMini(dir);
  * ```
  */
+/**
+ * Prepares the `generalist` cross-encoder dir (`generalist.onnx` +
+ * `tokenizer.json`), ready for {@link loadGeneralist}.
+ *
+ * @param {string} version - The release tag (default `"v0.4.0"`).
+ * @returns {Promise<string>} The directory path.
+ * @throws {Error} On network failure or invalid SHA256.
+ * @example
+ * ```ts
+ * const dir = await ensureGeneralist();
+ * const backend = loadGeneralist(dir);
+ * ```
+ */
+export async function ensureGeneralist(version = "v0.4.0"): Promise<string> {
+	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
+	const dir = path.join(CACHE, version, "generalist");
+	fs.mkdirSync(dir, { recursive: true });
+	const sums: Record<string, string> = {};
+	const sumsCached = path.join(CACHE, version, "SHA256SUMS_GENERALIST");
+	if (!fs.existsSync(sumsCached)) {
+		await fetchFile(`${releaseBase}/SHA256SUMS_GENERALIST`, sumsCached);
+	}
+	for (const line of fs.readFileSync(sumsCached, "utf8").split("\n")) {
+		const m = line.match(/^([0-9a-f]{64})\s+(.+)$/);
+		if (m) sums[m[2]!] = m[1]!;
+	}
+	for (const f of ["generalist.onnx", "tokenizer.json", "config.json"]) {
+		const dest = path.join(dir, f);
+		const sum = sums[f];
+		const ok = fs.existsSync(dest) && sum && (await sha256(dest)) === sum;
+		if (!ok) {
+			await fetchFile(`${releaseBase}/${encodeURIComponent(f)}`, dest);
+			if (sum && (await sha256(dest)) !== sum) {
+				fs.unlinkSync(dest);
+				throw new Error(`Invalid SHA256 for ${f}`);
+			}
+		}
+	}
+	fs.mkdirSync(path.join(dir, "tokenizer"), { recursive: true });
+	const tokDest = path.join(dir, "tokenizer", "tokenizer.json");
+	if (!fs.existsSync(tokDest)) {
+		fs.copyFileSync(path.join(dir, "tokenizer.json"), tokDest);
+	}
+	return dir;
+}
 export async function ensureMiniModel(
 	workflow: string,
 	version = "v0.2.0",
