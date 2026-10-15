@@ -121,3 +121,63 @@ export async function miniClassifier(
 		classifyAsync,
 	};
 }
+
+/**
+ * Specialist with automatic mode: `mini` (ONNX, downloaded on first async
+ * call) when `miniWorkflow` is set, sync `nano` (bundled weights) otherwise
+ * or when the download fails (offline, unknown workflow).
+ *
+ * Routing is unchanged — only inference upgrades. `decide()` (sync) always
+ * uses nano; `decideAsync()` uses mini once loaded.
+ *
+ * @param {PluginManifest} manifest - The manifest (domain, questions).
+ * @param {ModelWeights} weights - Bundled nano weights.
+ * @param {{ miniWorkflow?: string; primary?: string; joinFrom?: boolean; version?: string; variant?: "int8" | "fp32" }} opts - Mini model name + nano options.
+ * @returns {SabakiPlugin} Async-capable plugin.
+ */
+export function autoClassifier(
+	manifest: PluginManifest,
+	weights: ModelWeights,
+	opts: {
+		miniWorkflow?: string;
+		primary?: string;
+		joinFrom?: boolean;
+		version?: string;
+		variant?: "int8" | "fp32";
+	} = {},
+): SabakiPlugin & {
+	classifyAsync: (input: SabakiInput) => Promise<ClassifyOutput>;
+} {
+	const primary = opts.primary ?? manifest.primary ?? manifest.questions[0]!;
+	const nano = nanoClassifier(manifest, weights, { primary, joinFrom: opts.joinFrom });
+	let mini:
+		| (SabakiPlugin & {
+				classifyAsync: (input: SabakiInput) => Promise<ClassifyOutput>;
+		  })
+		| null
+		| undefined;
+	const classifyAsync = async (input: SabakiInput): Promise<ClassifyOutput> => {
+		if (mini === undefined) {
+			if (!opts.miniWorkflow) {
+				mini = null;
+			} else {
+				try {
+					mini = await miniClassifier(manifest, opts.miniWorkflow, {
+						primary,
+						version: opts.version,
+						variant: opts.variant,
+					});
+				} catch {
+					mini = null;
+				}
+			}
+		}
+		if (mini) return mini.classifyAsync(input);
+		return nano.classify(input) as ClassifyOutput;
+	};
+	return {
+		manifest,
+		classify: classifyAsync,
+		classifyAsync,
+	};
+}
