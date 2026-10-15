@@ -58,7 +58,12 @@ flowchart LR
 ## Jev-compatible serving
 
 ```sh
-SABAKI_GENERALIST_DIR=./generalist-onnx node sabaki/examples/serve.mjs 8000
+npm i sabaki onnxruntime-node   # specialists + minis come as optional deps
+node --input-type=module -e \
+  "await (await import('sabaki')).ensureGeneralist()"  # one-time ~90 MB, SHA-verified
+SABAKI_GENERALIST_DIR=~/.cache/sabaki/v0.4.0/generalist \
+  node node_modules/sabaki/examples/serve.mjs 8000
+# add "mode": "auto|nano|mini" per request to force inference (default auto)
 ```
 
 ```sh
@@ -90,7 +95,7 @@ Response shapes follow the System One contract: `choice` → `{choice, probabili
 | `@sabaki-js/invoice-processing` | invoice_processing | nano + mini |
 | `@sabaki-js/security-incidents` | security_incidents | nano + mini |
 | `@sabaki-js/agent-trace-observability` | agent_trace_observability | nano + mini |
-| `@sabaki-js/mail` | mail (8 buckets) | nano |
+| `@sabaki-js/mail` | mail (8 buckets) | nano + mini |
 | `@sabaki-js/doom` | doom (game commands) | nano + mini |
 | `@sabaki-js/generalist` | open questions | cross-encoder |
 
