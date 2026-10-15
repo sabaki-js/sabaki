@@ -88,6 +88,9 @@ export function loadGeneralist(modelDir: string) {
 				decision: options[bi]!,
 				confidence: Math.round(pr[bi]! * 1000) / 1000,
 				domain: "generalist",
+				probabilities: Object.fromEntries(
+					options.map((o, i) => [o, Math.round(pr[i]! * 1000) / 1000]),
+				),
 			};
 		},
 	};

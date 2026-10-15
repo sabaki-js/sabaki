@@ -61,6 +61,8 @@ export interface ClassifyOutput {
 	confidence: number;
 	/** Domain of the deciding plugin. */
 	domain: string;
+	/** Full option → probability map when available (Jev `probabilities`). */
+	probabilities?: Record<string, number>;
 }
 
 export interface SabakiPlugin {
