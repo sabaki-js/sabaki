@@ -4,36 +4,97 @@
 
 [![npm](https://img.shields.io/npm/v/sabaki)](https://www.npmjs.com/package/sabaki) [![license](https://img.shields.io/npm/l/sabaki)](https://github.com/sabaki-js/sabaki#readme) [![CI](https://github.com/sabaki-js/sabaki/actions/workflows/test-battery.yml/badge.svg)](https://github.com/sabaki-js/sabaki/actions)
 
-Lightweight typed-decision router with pluggable classifiers.
+**Typed decisions on CPU, in milliseconds — Jev-compatible, plugin-routed, open.**
 
-Route states to plugins (`nano` <1 ms, `mini` ONNX ~20 ms). Never guesses: unknown → null.
-
-## Modes
-
-| mode | weights | latency (CPU) | deps |
-|---|---|---|---|
-| `nano` (default) | TF-IDF, ~1 MB | <1 ms | none |
-| `mini` | MiniLM ONNX int8, ~22 MB | ~20 ms | `onnxruntime-node` (optional) |
+Sabaki routes an unstructured state to the right classifier and returns a **typed answer** (`choice` / `score` / `noul`) with a calibrated confidence — over an HTTP API that speaks the [System One](https://docs.typesafe.ai/concepts/system-one) contract (`POST /v1/systemone`). No GPU, no prompt engineering, no parsing LLM prose.
 
 ```ts
-import { miniClassifier } from "sabaki";
-const mini = await miniClassifier(manifest, "customer_service"); // downloads once, SHA256-verified
-await sabaki.decideAsync({ state }); // async path for mini/remote plugins
-```
+import { Sabaki } from "sabaki";
+import mail from "@sabaki-js/mail";
 
-## Create a plugin
-
-```ts
-import { definePlugin } from "sabaki";
-const ping = definePlugin({
-  manifest: { name: "ping", domain: "ping", version: "0.1.0", questions: ["up"], keywords: ["ping"] },
-  classify: () => ({ decision: "pong", confidence: 1, domain: "ping" }),
+const sabaki = new Sabaki().register(mail).setFallback(generalist);
+await sabaki.decideAsync({
+  state: "Invoice charged twice, need a refund",
+  question: "bucket",
+  options: ["billing", "spam"],
 });
+// { decision: "billing", confidence: 0.89, domain: "mail", plugin: "@sabaki-js/mail" }
 ```
 
-Or start from [`@sabaki-js/plugin-template`](https://github.com/sabaki-js/plugin-template).
+## Why sabaki
 
-Part of [sabaki](https://github.com/sabaki-js/sabaki) — see the [GUIDE](https://github.com/sabaki-js/sabaki/blob/main/GUIDE.md).
+| | sabaki nano | sabaki mini | sabaki generalist | OpenDecider | Jev | Laya-td |
+|---|---|---|---|---|---|---|
+| typed-decisions acc. | 0.61 | 0.69 | 0.56 (ep0, training) | 0.796 | 0.754 | 0.766 |
+| CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | ~GPU | API only | ~25 s/state (CPU, disqualified) |
+| Offline / on-prem | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
+| License | MIT | MIT | MIT | — | commercial | Apache-2.0 |
+
+*Benchmark: `LocalLLaMA/typed-decisions` test splits (100/workflow), honest splits. Mail bucket8: nano 0.865 anonymized.*
+
+Sabaki trades a few accuracy points for **1000× lower latency and zero infrastructure**: the whole stack runs on a laptop CPU, offline, with `npm i sabaki`.
+
+## Architecture
+
+Specialists win by routing score; the generalist answers everything else. Only installed plugins ever decide.
+
+```mermaid
+flowchart LR
+    A[state + questions] --> B{route()\nhits / sqrt.keywords.\n>= threshold?}
+    B -- yes: best plugin --> C[specialist\nnano <1ms / mini ~20ms]
+    B -- no: unknown --> D[fallback generalist\ncross-encoder ~20ms]
+    C --> E{answerJev()\nchoice / score / noul}
+    D --> E
+    E --> F["/v1/systemone\n{model, answers, usage}"]
+```
+
+**Routing** (`route()`): lowercase, unaccented 4+ letter tokens; loose substring match against `manifest.keywords`; score `hits / √|keywords|`; per-plugin `threshold` (default 0.15, mail 0.03). Below threshold → `unknown`, never a guess.
+
+**Plugins** (`definePlugin` / `nanoClassifier` / `miniClassifier` / `autoClassifier`): the minimal contract is `{ manifest, classify }` — sync or async. Specialists ship fixed questions; the generalist answers **runtime-defined** questions (`instructions` + `criteria`, up to 255 options) with one forward pass per option and argmax.
+
+**Modes**: `nano` (TF-IDF + LogReg, zero deps, <1 ms) → `mini` (MiniLM ONNX int8, 22 MB, SHA256-verified auto-download, ~20 ms) → generalist fallback. `decide()` stays sync (nano); `decideAsync()` unlocks ONNX.
+
+## Jev-compatible serving
+
+```sh
+SABAKI_GENERALIST_DIR=./generalist-onnx node sabaki/examples/serve.mjs 8000
+```
+
+```sh
+curl -X POST localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
+  "model": "sabaki-generalist-v1",
+  "state": "My invoice charged twice this month",
+  "questions": {
+    "department": {"type": "choice", "instructions": "Route this message.",
+      "criteria": {"billing": "Payments, invoices", "technical": "Bugs, outages"}},
+    "urgent": {"type": "noul", "instructions": "Needs a reply today?"}
+  }
+}'
+```
+
+Response shapes follow the System One contract: `choice` → `{choice, probabilities, confidence}`, `score` → `{score, legend, probabilities, confidence}`, `noul` → `{noul}`. The `model` field names the actual responder (`@sabaki-js/mail@1.0.0+mini`, `sabaki-generalist-v1`, or `sabaki-routed(...)` when mixed). Invalid schemas → `422`.
+
+## Production notes
+
+- **Throughput** (i5 CPU): nano ~18k req/s, mini/generalist ~30-70 req/s. Batch questions per call; cap options at 8.
+- **Deterministic**: identical input → identical output (verified 100/100). Calibrate thresholds per question, gate on `confidence`.
+- **Privacy**: fully offline. The mail plugin trains on anonymized corpora (0 PII, audited public release).
+- **Install**: `npm i sabaki` (+ optional `@sabaki-js/*` specialists, auto-detected). Serve with pm2 + your reverse proxy; add auth before exposing.
+
+## Plugins
+
+| package | domain | mode |
+|---|---|---|
+| `@sabaki-js/customer-service` | customer_service | nano + mini |
+| `@sabaki-js/invoice-processing` | invoice_processing | nano + mini |
+| `@sabaki-js/security-incidents` | security_incidents | nano + mini |
+| `@sabaki-js/agent-trace-observability` | agent_trace_observability | nano + mini |
+| `@sabaki-js/mail` | mail (8 buckets) | nano |
+| `@sabaki-js/doom` | doom (game commands) | nano + mini |
+| `@sabaki-js/generalist` | open questions | cross-encoder |
+
+Or start from [`@sabaki-js/plugin-template`](https://github.com/sabaki-js/plugin-template) — see the [GUIDE](https://github.com/sabaki-js/sabaki/blob/main/GUIDE.md).
 
 ## License
 
