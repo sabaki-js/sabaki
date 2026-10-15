@@ -8,7 +8,7 @@ import {
 } from "../src/index.js";
 import { defineGeneralist } from "../../plugin-generalist/dist/index.js";
 
-const MODEL_DIR = "~/sabaki-js/weights-generalist/generalist-onnx";
+const MODEL_DIR = "/home/lsannier/sabaki-js/weights-generalist/generalist-onnx";
 
 import csManifest from "../../plugin-customer-service/dist/manifest.json" with { type: "json" };
 import invManifest from "../../plugin-invoice-processing/dist/manifest.json" with { type: "json" };

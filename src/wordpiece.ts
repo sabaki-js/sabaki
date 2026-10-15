@@ -41,6 +41,21 @@ function basicTokens(s: string): string[] {
 		.filter(Boolean);
 }
 
+const SPECIAL = /(\[(?:CLS|SEP|MASK|UNK|PAD)\])/g;
+
+function pieces(text: string, v: MiniVocab): string[] {
+	// Parité HF : les tokens spéciaux ne sont jamais découpés ni normalisés.
+	const out: string[] = [];
+	for (const chunk of text.split(SPECIAL)) {
+		if (/^\[(?:CLS|SEP|MASK|UNK|PAD)\]$/.test(chunk)) {
+			out.push(chunk);
+			continue;
+		}
+		for (const w of basicTokens(normalize(chunk))) out.push(...wordpiece(w, v));
+	}
+	return out;
+}
+
 function wordpiece(word: string, v: MiniVocab): string[] {
 	const out: string[] = [];
 	let start = 0;
@@ -77,10 +92,7 @@ export function encode(
 	maxLen = 256,
 ): { ids: number[]; mask: number[] } {
 	let ids: number[] = [v.vocab.get("[CLS]")!];
-	for (const w of basicTokens(normalize(text))) {
-		for (const p of wordpiece(w, v)) ids.push(v.vocab.get(p)!);
-		if (ids.length >= maxLen - 1) break;
-	}
+	for (const p of pieces(text, v)) ids.push(v.vocab.get(p)!);
 	ids = ids.slice(0, maxLen - 1);
 	ids.push(v.vocab.get("[SEP]")!);
 	return { ids, mask: new Array(ids.length).fill(1) };
