@@ -6,8 +6,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const sabaki = await import(HERE + "/../node_modules/sabaki/dist/index.js").catch(
-	async () => await import("sabaki"),
+const sabaki = await import(HERE + "/../dist/index.js").catch(
+	async () => await import(HERE + "/../node_modules/sabaki/dist/index.js").catch(
+		async () => await import("sabaki"),
+	),
 );
 const { Sabaki, loadMini, ensureMiniModel } = sabaki;
 
@@ -19,9 +21,10 @@ const WF = [
 ];
 const plugins = {};
 for (const wf of WF) {
-	const domain = wf.replace(/_observability$/, "").replace(/_/g, "-");
+	const domain = wf.replace(/_/g, "-");
+	const short = domain.replace(/-observability$/, "");
 	let mod = null;
-	for (const cand of [`@sabaki-js/${domain}`, `@sabaki-js/plugin-${domain}`]) {
+	for (const cand of [`@sabaki-js/${domain}`, `@sabaki-js/plugin-${domain}`, `@sabaki-js/${short}`]) {
 		try {
 			mod = await import(cand);
 			break;
