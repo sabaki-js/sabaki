@@ -41,12 +41,12 @@ Specialists win by routing score; the generalist answers everything else. Only i
 
 ```mermaid
 flowchart LR
-    A[state + questions] --> B{route()\nhits / sqrt.keywords.\n>= threshold?}
-    B -- yes: best plugin --> C[specialist\nnano <1ms / mini ~20ms]
-    B -- no: unknown --> D[fallback generalist\ncross-encoder ~20ms]
-    C --> E{answerJev()\nchoice / score / noul}
+    A["state + questions"] --> B["route: keyword score,<br/>specialist or unknown"]
+    B -- specialist wins --> C["nano under 1ms<br/>or mini about 20ms"]
+    B -- unknown --> D["generalist fallback<br/>runtime-defined questions"]
+    C --> E["Jev answers<br/>choice, score, noul"]
     D --> E
-    E --> F["/v1/systemone\n{model, answers, usage}"]
+    E --> F["POST /v1/systemone<br/>model, answers, usage"]
 ```
 
 **Routing** (`route()`): lowercase, unaccented 4+ letter tokens; loose substring match against `manifest.keywords`; score `hits / √|keywords|`; per-plugin `threshold` (default 0.15, mail 0.03). Below threshold → `unknown`, never a guess.
