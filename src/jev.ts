@@ -5,7 +5,6 @@
  */
 import type {
 	ClassifyOutput,
-	DecideOutput,
 	Sabaki,
 	SabakiInput,
 } from "./index.js";
@@ -85,13 +84,15 @@ export function mapQuestion(qid: string, q: JevQuestion, native: string[], prima
 /**
  * Answers one Jev question: specialist (mapped) or fallback, Jev shape.
  * Specialists without full maps return `{decision: confidence}` (documented).
+ * Returns the responder model id for Jev's `model` field.
  */
 export async function answerJev(
 	sabaki: Sabaki,
 	state: string,
 	qid: string,
 	q: JevQuestion,
-): Promise<JevAnswer> {
+	generalistModel = "sabaki-generalist-v1",
+): Promise<{ answer: JevAnswer; model: string }> {
 	const options = criteriaOptions(q);
 	const route = sabaki.route(state);
 	if (route.plugin) {
@@ -101,11 +102,11 @@ export async function answerJev(
 		const input: SabakiInput = { state, question };
 		const out = (await route.plugin.classify(input)) as ClassifyOutput;
 		// Sans criteria explicites : l'espace de réponse = la décision elle-même.
-		const opts =
-			q.criteria || q.options ? options : [String(out.decision)];
-		const decide: DecideOutput = { ...out, domain: route.domain, plugin: manifest.name };
-		void decide;
-		return toJevAnswer(q.type, opts, out);
+		const opts = q.criteria || q.options ? options : [String(out.decision)];
+		return {
+			answer: toJevAnswer(q.type, opts, out),
+			model: `${manifest.name}@${manifest.version}+nano`,
+		};
 	}
 	const out = await sabaki.decideAsync({
 		state,
@@ -113,12 +114,15 @@ export async function answerJev(
 		options,
 	});
 	if (out.decision === null) {
-		return toJevAnswer(q.type, options, {
-			decision: options[0]!,
-			confidence: 0,
-			domain: "unknown",
-			probabilities: Object.fromEntries(options.map((o) => [o, 0])),
-		});
+		return {
+			answer: toJevAnswer(q.type, options, {
+				decision: options[0]!,
+				confidence: 0,
+				domain: "unknown",
+				probabilities: Object.fromEntries(options.map((o) => [o, 0])),
+			}),
+			model: generalistModel,
+		};
 	}
-	return toJevAnswer(q.type, options, out);
+	return { answer: toJevAnswer(q.type, options, out), model: generalistModel };
 }
