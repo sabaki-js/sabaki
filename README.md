@@ -31,7 +31,7 @@ await sabaki.decideAsync({
 | Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
 | License | MIT | MIT | MIT | - | commercial | Apache-2.0 |
 
-*Benchmark: `LocalLLaMA/typed-decisions` test splits (100/workflow), honest splits. Mail bucket8: nano 0.865 anonymized.*
+*Benchmark: `LocalLLaMA/typed-decisions`, temporal split (generation batches kept apart, 300 train / 100 test per workflow). Competitor figures are published, not remeasured.* Mail bucket8: nano 0.865 anonymized.*
 
 Sabaki trades a few accuracy points for **1000× lower latency and zero infrastructure**: the whole stack runs on a laptop CPU, offline, with `npm i sabaki`.
 
