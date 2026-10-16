@@ -8,7 +8,6 @@ import {
 } from "../src/index.js";
 import { defineGeneralist } from "../../plugins/plugin-generalist/dist/index.js";
 import { ensureGeneralist } from "../src/index.js";
-const MODEL_DIR = await ensureGeneralist();
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
