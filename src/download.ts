@@ -54,7 +54,7 @@ async function fetchFile(url: string, dest: string): Promise<void> {
  * const backend = loadGeneralist(dir);
  * ```
  */
-export async function ensureGeneralist(version = "v0.4.0"): Promise<string> {
+export async function ensureGeneralist(version = "v0.6.0"): Promise<string> {
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
 	const dir = path.join(CACHE, version, "generalist");
 	fs.mkdirSync(dir, { recursive: true });
