@@ -25,7 +25,7 @@ await sabaki.decideAsync({
 
 | | sabaki nano | sabaki mini | sabaki generalist | OpenDecider | Jev | Laya-td |
 |---|---|---|---|---|---|---|
-| typed-decisions acc. | 0.61 | 0.69 | 0.75 (mix val v3ép1, phishing incl.) | 0.796 | 0.754 | 0.766 |
+| typed-decisions acc. | 0.61 | 0.69 | 0.75 (mix val v3ép2, phishing 0.875 val / 5/9 sonde) | 0.796 | 0.754 | 0.766 |
 | CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | GPU (~s) | API only | GPU (25 s/state on CPU) |
 | Offline / on-prem | ✅ | ✅ | ✅ | ✅ (GPU) | ❌ | ✅ (GPU) |
 | Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
@@ -85,6 +85,7 @@ Response shapes follow the System One contract: `choice` → `{choice, probabili
 
 - **Throughput** (i5 CPU): nano ~18k req/s, mini/generalist ~30-70 req/s. Batch questions per call; cap options at 8.
 - **Deterministic**: identical input → identical output (verified 100/100). Calibrate thresholds per question, gate on `confidence`.
+- **Limits**: generalist is EN-only (`all-MiniLM-L6-v2`, routage EN) — FR hors distribution (sonde 1/4 FR vs 3/4 EN sur cas similaires). Softmax sur-confiant OOD (faux à 1.00 observé) : pour un usage autonome, passer `abstainAt: 0.6–0.7` (→ `decision: null` sous le seuil, à clarifier au lieu de résoudre).
 - **Privacy**: fully offline. The mail plugin trains on anonymized corpora (0 PII, audited public release).
 - **Install**: `npm i sabaki` (+ optional `@sabaki-js/*` specialists, auto-detected). Serve with pm2 + your reverse proxy; add auth before exposing.
 

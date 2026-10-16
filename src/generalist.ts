@@ -11,6 +11,14 @@ import type { ClassifyOutput, SabakiInput } from "./index.js";
 export interface GeneralistInput extends SabakiInput {
 	/** Candidate answers (>= 2, capped at 8). Default: `["yes", "no"]`. */
 	options?: string[];
+	/**
+	 * Abstention threshold (opt-in, no abstention by default).
+	 * When the top softmax probability is below it, `decision` is `null`
+	 * (caller should ask for clarification instead of auto-resolving).
+	 * Recommended `0.6`–`0.7` for autonomous use — softmax is overconfident
+	 * out of distribution (EN-only model, cf. README limits).
+	 */
+	abstainAt?: number;
 }
 
 function softmax(a: number[]): number[] {
@@ -96,14 +104,14 @@ export function loadGeneralist(modelDir: string) {
 			pr.forEach((v, i) => {
 				if (v > pr[bi]!) bi = i;
 			});
-			return {
-				decision: options[bi]!,
-				confidence: Math.round(pr[bi]! * 1000) / 1000,
-				domain: "generalist",
-				probabilities: Object.fromEntries(
-					options.map((o, i) => [o, Math.round(pr[i]! * 1000) / 1000]),
-				),
-			};
+			const confidence = Math.round(pr[bi]! * 1000) / 1000;
+			const probs = Object.fromEntries(
+				options.map((o, i) => [o, Math.round(pr[i]! * 1000) / 1000]),
+			);
+			if (input.abstainAt !== undefined && confidence < input.abstainAt) {
+				return { decision: null, confidence, domain: "generalist", probabilities: probs };
+			}
+			return { decision: options[bi]!, confidence, domain: "generalist", probabilities: probs };
 		},
 	};
 }
