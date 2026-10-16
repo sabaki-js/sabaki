@@ -137,7 +137,7 @@ export { loadGeneralist } from "./generalist.js";
 export type { GeneralistInput } from "./generalist.js";
 export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
-export { ensureMiniModel, ensureGeneralist } from "./download.js";
+export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
 export { definePlugin, miniClassifier, nanoClassifier, autoClassifier } from "./plugin.js";
 export type { DefinePluginOptions } from "./plugin.js";
 

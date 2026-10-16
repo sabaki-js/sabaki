@@ -11,6 +11,37 @@ import os from "os";
 
 const CACHE = path.join(os.homedir(), ".cache", "sabaki");
 
+/** Hardcoded fallbacks when `versions.json` is unreachable. */
+const FALLBACK_VERSIONS: Record<string, string> = {
+	minilaya: "v0.2.0",
+	generalist: "v0.7.0",
+	mail: "v0.5.0",
+	doom: "v0.3.0",
+};
+
+/**
+ * Resolves `"latest"` (or undefined) to a release tag via the versioned
+ * `versions.json` pointer (24h cache), else the hardcoded fallback.
+ */
+export async function resolveVersion(family: string, version?: string): Promise<string> {
+	if (version && version !== "latest") return version;
+	const cached = path.join(CACHE, "versions.json");
+	const fresh = fs.existsSync(cached) && Date.now() - fs.statSync(cached).mtimeMs < 24 * 3600e3;
+	try {
+		if (!fresh) {
+			await fetchFile(
+				"https://raw.githubusercontent.com/sabaki-js/sabaki-models/main/versions.json",
+				cached,
+			);
+		}
+		const map = JSON.parse(fs.readFileSync(cached, "utf8")) as Record<string, string>;
+		if (map[family]) return map[family]!;
+	} catch {
+		/* repli ci-dessous */
+	}
+	return FALLBACK_VERSIONS[family] ?? "v0.2.0";
+}
+
 function sha256(file: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const h = crypto.createHash("sha256");
@@ -54,7 +85,8 @@ async function fetchFile(url: string, dest: string): Promise<void> {
  * const backend = loadGeneralist(dir);
  * ```
  */
-export async function ensureGeneralist(version = "v0.7.0"): Promise<string> {
+export async function ensureGeneralist(version?: string): Promise<string> {
+	version = await resolveVersion("generalist", version);
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
 	const dir = path.join(CACHE, version, "generalist");
 	fs.mkdirSync(dir, { recursive: true });
@@ -88,9 +120,11 @@ export async function ensureGeneralist(version = "v0.7.0"): Promise<string> {
 }
 export async function ensureMiniModel(
 	workflow: string,
-	version = "v0.2.0",
+	version?: string,
 	variant: "int8" | "fp32" = "int8",
 ): Promise<string> {
+	const family = workflow === "mail" ? "mail" : workflow === "doom" ? "doom" : "minilaya";
+	version = await resolveVersion(family, version);
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
 	const suffix = variant === "int8" ? "_int8" : "";
 	const dir = path.join(CACHE, version, `${workflow}-${variant}`);
