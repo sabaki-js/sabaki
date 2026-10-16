@@ -11,7 +11,7 @@ const inv = (invPkg as { default?: SabakiPlugin }).default ?? (invPkg as SabakiP
 let fallbackCount = 0;
 const fallback: SabakiPlugin = {
 	manifest: {
-		name: "sabaki-generalist-v1",
+		name: "sabaki-generalist-v2",
 		domain: "generalist",
 		version: "0.1.0",
 		questions: ["decision"],

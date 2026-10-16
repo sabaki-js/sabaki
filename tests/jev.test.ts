@@ -24,7 +24,7 @@ function dummy(domain: string, keywords: string[], questions: string[]): SabakiP
 // Fallback factice (pas d'ONNX) : echo des options.
 const fallback: SabakiPlugin = {
 	manifest: {
-		name: "sabaki-generalist-v1",
+		name: "sabaki-generalist-v2",
 		domain: "generalist",
 		version: "0.1.0",
 		questions: ["decision"],
