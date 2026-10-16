@@ -6,7 +6,7 @@ import {
 	validateJevQuestion,
 	type SabakiPlugin,
 } from "../src/index.js";
-import { defineGeneralist } from "../../plugin-generalist/dist/index.js";
+import { defineGeneralist } from "../../plugins/plugin-generalist/dist/index.js";
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,10 +14,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODEL_DIR =
 	process.env.SABAKI_GENERALIST_DIR ?? path.join(HERE, "..", "..", "weights-generalist", "generalist-onnx");
 
-import csManifest from "../../plugin-customer-service/dist/manifest.json" with { type: "json" };
-import invManifest from "../../plugin-invoice-processing/dist/manifest.json" with { type: "json" };
-import siManifest from "../../plugin-security-incidents/dist/manifest.json" with { type: "json" };
-import atManifest from "../../plugin-agent-trace-observability/dist/manifest.json" with { type: "json" };
+import csManifest from "../../plugins/plugin-customer-service/dist/manifest.json" with { type: "json" };
+import invManifest from "../../plugins/plugin-invoice-processing/dist/manifest.json" with { type: "json" };
+import siManifest from "../../plugins/plugin-security-incidents/dist/manifest.json" with { type: "json" };
+import atManifest from "../../plugins/plugin-agent-trace-observability/dist/manifest.json" with { type: "json" };
 import type { PluginManifest } from "../src/index.js";
 
 const MANIFESTS = [csManifest, invManifest, siManifest, atManifest] as PluginManifest[];

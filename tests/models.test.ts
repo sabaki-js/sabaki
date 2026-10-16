@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
 import { Sabaki, answerJev, type SabakiPlugin } from "../src/index.js";
-import mailPkg from "../../plugin-mail/dist/index.js";
-import csPkg from "../../plugin-customer-service/dist/index.js";
-import invPkg from "../../plugin-invoice-processing/dist/index.js";
+import mailPkg from "../../plugins/plugin-mail/dist/index.js";
+import csPkg from "../../plugins/plugin-customer-service/dist/index.js";
+import invPkg from "../../plugins/plugin-invoice-processing/dist/index.js";
 
 const mail = (mailPkg as { default?: SabakiPlugin }).default ?? (mailPkg as SabakiPlugin);
 const cs = (csPkg as { default?: SabakiPlugin }).default ?? (csPkg as SabakiPlugin);
