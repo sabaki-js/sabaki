@@ -87,10 +87,21 @@ const server = http.createServer(async (req, res) => {
 	const json = (code, obj) => {
 		res.writeHead(code, {
 			"content-type": "application/json",
+			"access-control-allow-origin": "*",
 			"x-request-id": Math.random().toString(36).slice(2),
 		});
 		res.end(JSON.stringify(obj));
 	};
+	if (req.method === "OPTIONS") {
+		res.writeHead(204, {
+			"access-control-allow-origin": "*",
+			"access-control-allow-methods": "GET, POST, OPTIONS",
+			"access-control-allow-headers": "content-type",
+			"access-control-max-age": "86400",
+		});
+		res.end();
+		return;
+	}
 	// Statique : site (/) + typedoc (/docs/). workspace: sabaki/examples -> ../../site, ../../docs
 	const DOCS = path.join(HERE, "..", "..", "docs", "typedoc");
 	const statics = [
