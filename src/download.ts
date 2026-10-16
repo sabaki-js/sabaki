@@ -122,7 +122,7 @@ export async function ensureMiniModel(
 		`minilaya-onnx/${workflow}${suffix}.onnx`,
 		`minilaya-onnx/${workflow}${suffix}.onnx.data`,
 	];
-	const metaBase = releaseBase;
+	const metaBase = `https://github.com/sabaki-js/sabaki-models/releases/download/v0.1.0`;
 	const meta = [
 		`minilaya-onnx/${workflow}.json`,
 		"minilaya-onnx/tokenizer/tokenizer.json",
