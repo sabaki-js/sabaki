@@ -1,6 +1,6 @@
 // Exemple SDK officiel TypeSafe contre un serve sabaki.
 // Usage: SABAKI_URL=https://sabaki.fox3000foxy.com node examples/sdk-typesafe.mjs
-// (nécessite @typesafe-ai/sdk : npm i @typesafe-ai/sdk)
+// (necessite @typesafe-ai/sdk : npm i @typesafe-ai/sdk)
 import { TypeSafeClient, choice, noul } from "@typesafe-ai/sdk";
 
 const client = new TypeSafeClient({
@@ -16,5 +16,5 @@ const r = await client.systemOne({
 		urgent: noul("Reply today?"),
 	},
 });
-console.log(JSON.stringify(r.answers, null, 2));
+console.log(JSON.stringify(r.answers, null, 0));
 console.log("model:", r.model);

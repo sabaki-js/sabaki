@@ -2,7 +2,7 @@
 	"name": "sabaki",
 	"version": "1.3.1",
 	"license": "MIT",
-	"description": "Sabaki \u2014 routeur l\u00e9ger vers des plugins de d\u00e9cision typ\u00e9e (z\u00e9ro d\u00e9pendance runtime).",
+	"description": "Sabaki — routeur léger vers des plugins de décision typée (zéro dépendance runtime).",
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -72,5 +72,8 @@
 		"@sabaki-js/agent-trace-observability": "^1.0.0",
 		"@sabaki-js/mail": "^1.0.0",
 		"@sabaki-js/doom": "^1.0.0"
+	},
+	"dependencies": {
+		"@typesafe-ai/sdk": "^0.7.0"
 	}
 }
