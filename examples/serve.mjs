@@ -52,9 +52,11 @@ for (const plug of Object.values(plugins)) {
 	}
 }
 // Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
-if (process.env.SABAKI_GENERALIST_DIR) {
+// Dir via argv[3], sinon SABAKI_GENERALIST_DIR (explicite > env, pm2-safe).
+const GENERALIST_DIR = process.argv[3] ?? process.env.SABAKI_GENERALIST_DIR;
+if (GENERALIST_DIR) {
 	const { loadGeneralist, definePlugin } = sabaki;
-	const backend = loadGeneralist(process.env.SABAKI_GENERALIST_DIR);
+	const backend = loadGeneralist(GENERALIST_DIR);
 	const fb = definePlugin({
 		manifest: {
 			name: "@sabaki-js/generalist",
@@ -67,8 +69,12 @@ if (process.env.SABAKI_GENERALIST_DIR) {
 	});
 	s.setFallback(fb);
 	sNano.setFallback(fb);
-	console.log("fallback generalist actif");
+	backend.model.then((m) => console.log(`fallback generalist actif (${m})`));
 }
+const GENERALIST_MODEL =
+	GENERALIST_DIR
+		? await loadGeneralist(GENERALIST_DIR).model
+		: "sabaki-generalist";
 const minis = {};
 async function miniFor(wf) {
 	if (!(wf in minis)) {
@@ -157,7 +163,7 @@ const server = http.createServer(async (req, res) => {
 			for (const [q, spec] of Object.entries(questions)) {
 				const err = validateJevQuestion(spec);
 				if (err) return json(422, { error: `${q}: ${err}` });
-				const { answer, model } = await answerJev(router, st, q, spec);
+				const { answer, model } = await answerJev(router, st, q, spec, GENERALIST_MODEL);
 				if (mode === "mini" && model.endsWith("+nano"))
 					return json(422, { error: `${q}: mini indisponible (nano only)` });
 				answers[q] = answer;
