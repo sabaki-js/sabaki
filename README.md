@@ -25,7 +25,7 @@ await sabaki.decideAsync({
 
 | | sabaki nano | sabaki mini | sabaki generalist | OpenDecider | Jev | Laya-td |
 |---|---|---|---|---|---|---|
-| typed-decisions acc. | 0.61 | 0.69 | 0.73 (mix val v2) | 0.796 | 0.754 | 0.766 |
+| typed-decisions acc. | 0.61 | 0.69 | 0.74 (mix val v2ép3) | 0.796 | 0.754 | 0.766 |
 | CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | GPU (~s) | API only | GPU (25 s/state on CPU) |
 | Offline / on-prem | ✅ | ✅ | ✅ | ✅ (GPU) | ❌ | ✅ (GPU) |
 | Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
