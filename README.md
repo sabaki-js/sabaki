@@ -25,7 +25,7 @@ await sabaki.decideAsync({
 
 | | sabaki nano | sabaki mini | sabaki generalist | OpenDecider | Jev | Laya-td |
 |---|---|---|---|---|---|---|
-| typed-decisions acc. | 0.61 | 0.69 | 0.56 (ep0, training) | 0.796 | 0.754 | 0.766 |
+| typed-decisions acc. | 0.61 | 0.69 | 0.73 (mix val v2) | 0.796 | 0.754 | 0.766 |
 | CPU latency | **<1 ms** | ~20 ms | ~20-36 ms | GPU (~s) | API only | GPU (25 s/state on CPU) |
 | Offline / on-prem | ✅ | ✅ | ✅ | ✅ (GPU) | ❌ | ✅ (GPU) |
 | Runtime-defined questions | via fallback | via fallback | ✅ | ❌ | ✅ | ❌ |
@@ -62,7 +62,7 @@ npm i sabaki   # specialists, minis + onnxruntime arrive as optional deps
 # nano-only (no ONNX): npm i sabaki --omit=optional
 node --input-type=module -e \
   "await (await import('sabaki')).ensureGeneralist()"  # one-time ~90 MB, SHA-verified
-SABAKI_GENERALIST_DIR=~/.cache/sabaki/v0.4.0/generalist \
+SABAKI_GENERALIST_DIR=~/.cache/sabaki/v0.6.0/generalist \
   node node_modules/sabaki/examples/serve.mjs 8000
 # add "mode": "auto|nano|mini" per request to force inference (default auto)
 ```
