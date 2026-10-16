@@ -95,7 +95,7 @@ const server = http.createServer(async (req, res) => {
 	const DOCS = path.join(HERE, "..", "..", "docs", "typedoc");
 	const statics = [
 		["/docs/", DOCS],
-		["/", path.join(HERE, "..", "..", "site")],
+		["/", path.join(HERE, "..", "..", "sabaki-site-v3", "dist")],
 	];
 	if (req.method === "GET") {
 		const url = new URL(req.url, "http://x");
