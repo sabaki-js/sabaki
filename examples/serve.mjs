@@ -54,10 +54,10 @@ for (const plug of Object.values(plugins)) {
 // Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
 // Dir via argv[3], sinon SABAKI_GENERALIST_DIR (explicite > env, pm2-safe).
 const GENERALIST_DIR = process.argv[3] ?? process.env.SABAKI_GENERALIST_DIR;
+const { loadGeneralist: _loadGeneralist, definePlugin: _definePlugin } = sabaki;
 if (GENERALIST_DIR) {
-	const { loadGeneralist, definePlugin } = sabaki;
-	const backend = loadGeneralist(GENERALIST_DIR);
-	const fb = definePlugin({
+	const backend = _loadGeneralist(GENERALIST_DIR);
+	const fb = _definePlugin({
 		manifest: {
 			name: "@sabaki-js/generalist",
 			domain: "generalist",
@@ -73,7 +73,7 @@ if (GENERALIST_DIR) {
 }
 const GENERALIST_MODEL =
 	GENERALIST_DIR
-		? await loadGeneralist(GENERALIST_DIR).model
+		? await _loadGeneralist(GENERALIST_DIR).model
 		: "sabaki-generalist";
 const minis = {};
 async function miniFor(wf) {
