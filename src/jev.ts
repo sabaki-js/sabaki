@@ -81,7 +81,7 @@ export async function answerJev(
 	state: string,
 	qid: string,
 	q: JevQuestion,
-	generalistModel = "sabaki-generalist-v2",
+	generalistModel = "sabaki-generalist",
 ): Promise<{ answer: JevAnswer; model: string }> {
 	const options = criteriaOptions(q);
 	const route = sabaki.route(state);

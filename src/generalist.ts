@@ -26,6 +26,8 @@ interface GeneralistBackend {
 	vocab: Parameters<typeof encode>[1];
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sess: any;
+	/** Model id from `config.json` (`model`), or `"sabaki-generalist"` when absent. */
+	model: string;
 }
 
 const cache = new Map<string, Promise<GeneralistBackend>>();
@@ -52,11 +54,22 @@ export function loadGeneralist(modelDir: string) {
 				path.join(modelDir, "generalist.onnx"),
 				{ intraOpNumThreads: 2 },
 			);
-			return { ort, vocab, sess };
+			let model = "sabaki-generalist";
+			try {
+				const cfg = JSON.parse(
+					fs.readFileSync(path.join(modelDir, "config.json"), "utf8"),
+				) as { model?: unknown };
+				if (typeof cfg.model === "string" && cfg.model) model = cfg.model;
+			} catch {
+				/* pas de config : id générique */
+			}
+			return { ort, vocab, sess, model };
 		})();
 		cache.set(modelDir, p);
 	}
 	return {
+		/** Model id (`config.json` → `model`, sinon `"sabaki-generalist"`). */
+		model: p!.then((b) => b.model),
 		decide: async (input: GeneralistInput): Promise<ClassifyOutput> => {
 			const { ort, vocab, sess } = await p!;
 			const options =

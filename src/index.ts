@@ -135,6 +135,9 @@ export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
 export { loadGeneralist } from "./generalist.js";
 export type { GeneralistInput } from "./generalist.js";
+export { serveHttp } from "./serve.js";
+export type { ServeOptions, Served } from "./serve.js";
+import { serveHttp as _serveHttp, type ServeOptions, type Served } from "./serve.js";
 export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
@@ -319,5 +322,24 @@ export class Sabaki {
 		const question = mapQuestion(input.question, undefined, native, manifest.primary ?? native[0]!);
 		const out = await r.plugin.classify({ ...input, question });
 		return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
+	}
+
+	/**
+	 * Serves `this` router as `POST /v1/systemone` (+ `GET /health`,
+	 * `GET /v1/models`) on `port` (default `8000`, `0` = ephemeral).
+	 * Same path as {@link Sabaki.decideAsync}: specialists win by threshold,
+	 * the fallback answers the rest.
+	 *
+	 * @param {ServeOptions} opts - Port and fallback model id.
+	 * @returns The server URL and `close()`.
+	 * @example
+	 * ```ts
+	 * const { url, close } = await sabaki.serve({ port: 8000 });
+	 * // POST ${url}/v1/systemone {state, questions}
+	 * await close();
+	 * ```
+	 */
+	async serve(opts?: ServeOptions): Promise<Served> {
+		return _serveHttp(this, opts);
 	}
 }
