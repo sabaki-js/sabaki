@@ -7,12 +7,14 @@ import {
 	type SabakiPlugin,
 } from "../src/index.js";
 import { defineGeneralist } from "../../plugins/plugin-generalist/dist/index.js";
+import { ensureGeneralist } from "../src/index.js";
+const MODEL_DIR = await ensureGeneralist();
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODEL_DIR =
-	process.env.SABAKI_GENERALIST_DIR ?? path.join(HERE, "..", "..", "weights-generalist", "generalist-onnx");
+	process.env.SABAKI_GENERALIST_DIR ?? (await ensureGeneralist());
 
 import csManifest from "../../plugins/plugin-customer-service/dist/manifest.json" with { type: "json" };
 import invManifest from "../../plugins/plugin-invoice-processing/dist/manifest.json" with { type: "json" };
