@@ -14,7 +14,7 @@ const CACHE = path.join(os.homedir(), ".cache", "sabaki");
 /** Hardcoded fallbacks when `versions.json` is unreachable. */
 const FALLBACK_VERSIONS: Record<string, string> = {
 	minilaya: "v0.2.0",
-	generalist: "v0.8.0",
+	generalist: "v1.0.0",
 	mail: "v0.5.0",
 	doom: "v0.3.0",
 };
