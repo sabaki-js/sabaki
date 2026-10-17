@@ -1,42 +1,21 @@
 # Sabaki Roadmap
 
-## Done
-- Core (`Sabaki`, router, `definePlugin`, `nano/miniClassifier`, `decideAsync`) + full English JSDoc
-- 5 nano plugins (0.59–0.90) + mail v0.3.1 anonymized (0.865, 0 PII)
-- MiniLM fine-tunes + ONNX + int8 (22 MB, −0.004 acc) + auto-download with SHA256
-- `sabaki serve` (systemone-compatible, lazy models)
-- Benchmarks: nano/mini/ONNX parity/ECE/OOD, Laya-CPU disqualified (~25 s/state)
-- Repos: 7 + `sabaki-models` releases v0.1.0/v0.2.0 + GUIDE.md + logo
+> Source de vérité : [`/TODO.md`](../TODO.md) (journal tenu à jour).
+> Ce fichier ne garde que la direction produit.
 
-## In progress (GPU)
-- [ ] Vision Doom: oracle recording (400 eps) → SFT → eval kills/survival
-- [ ] ModernBERT-base Doom eval (MiniLM plateaued at 0.57)
+## Fait (v1.0)
+- Core `sabaki` 1.7.0 + API `/v1/systemone` servie, `Sabaki.serve()`, `abstainAt`
+- Generalist **mini v1.0** (22M, served) : mix val 0.756, phishnchips R=0.616, typed-decisions 0.536
+- Spécialistes nano/mini (0.61 / 0.69), mail, versions `sabaki-models` (v1.0.0 = Latest stable, reste en pre-release)
+- Positionnement : pré-tri + escalade humaine (pas de résolution autonome)
 
-## Next: paths for sabaki-doom (vision defends only)
-- [ ] Navigation dataset: record oracle/controller routes on MAP01-style maps
-      (positions, doors, exit as **text states** - our typed format fits navigation
-      better than combat: `direction`/`target`/`open_door` as choice questions)
-- [ ] Train sabaki-doom-nav (MiniLM or bigger student) on route decisions
-- [ ] Two-head runtime: vision policy (combat) + nav decider (routes), arbitrated
-      by a simple rule (enemy visible → combat, else navigate) - same pattern
-      as doomLaya's controller, but learned
-- [ ] Eval: MAP01 exit rate + time, vs Laya v3 reference (61 s)
+## En cours
+- Test d'utilité spécialistes vs generalist-mini (décide qui sert quoi)
+- Routeur sémantique (si le test le justifie) ; Nano v2 (après)
+- Multilingue (corpus FR d'abord, modèle ensuite)
 
-## Next: Doom teacher path (decided fallback)
-- [ ] Set up doomLaya stack on GPU (ViZDoom + WADs + controller)
-- [ ] Record Laya-teacher games:
-  - hard labels → behavioral cloning (same SFT pipeline as oracle)
-  - soft probabilities → true distillation
-- [ ] Compare oracle-student vs Laya-student on kills/survival; keep the winner
-
-## Next: product
-- [ ] Publish v0.1.0 npm (`sabaki` + plugins)
-- [ ] Temperature scaling (Laya-style calibration)
-- [ ] Mail v0.4 only if a use case needs >0.9 (MiniLM ties TF-IDF)
-- [ ] `bunkitsu` CLI / plugin hub
-- [ ] Multilingual (FR train translation + Laya-multilingual teacher) if requested
-
-## Out of scope
-- Gemma-based students (license contamination of the distribution chain)
-- Laya-CPU serving (disqualified on latency)
-- Frozen-encoder distillation (measured worse than fine-tuning)
+## Parqué (avec motif)
+- `generalist-plus` 144M : NO-GO (ne bat pas le 22M à budget égal) — proto `144M-proto` dispo pour comparer
+- Distillation v1 : teacher trop faible (0.546 < 0.69) — à rouvrir si teacher > student
+- int8 cross-encoder : dégrade (-0.13) sans accélérer — écarté
+- TPU : pas de portage (2xT4 suffisent, XLA = risque sans gain prouvé)
