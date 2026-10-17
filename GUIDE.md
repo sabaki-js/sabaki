@@ -133,6 +133,28 @@ Rule for new corpora: run `drift_tool.py` first (warn > 0.6, block > 0.8).
 models with nano fallback, lazy-loaded per domain (~0.5 GB RAM for one
 domain instead of ~2 GB for four). Development use; add auth before exposing.
 
+## 6b. Pre-triage pattern (recommended for production)
+
+Never auto-resolve on raw `confidence`: softmax is overconfident out of
+distribution (wrong answers at 1.00 have been observed). Instead, gate
+every autonomous action on two thresholds:
+
+```ts
+// 1. Ask with an abstention threshold: unclear cases come back null.
+const r = await generalist.decide({
+  state, question: "Is this suspicious?", options: ["yes", "no"],
+  abstainAt: 0.7,
+});
+// 2. Route: automate high-confidence, escalate the rest.
+if (r.decision === null || r.confidence < 0.85) escalateToHuman(state, r);
+else automate(r);
+```
+
+Measured reference (generalist mini, 2,000 held-out phishing emails):
+recall 0.62 at precision 0.87 — good enough to **cut human triage volume**,
+not to replace reviewers. Treat Sabaki as a first pass that *reduces*
+queue size, with humans owning the final call and liability.
+
 ## 7. Writing a plugin
 
 Start from `@sabaki-js/plugin-template`. Minimal contract:
