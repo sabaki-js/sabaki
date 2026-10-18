@@ -33,19 +33,24 @@ for (const wf of WF) {
 			/* suivant */
 		}
 	}
-	if (mod) plugins[wf] = mod.default ?? mod;
+	if (mod) plugins[wf] = { plugin: mod.default ?? mod, modelDir: mod.modelDir };
 	else console.log(`plugin manquant: ${domain} (repli routage seul)`);
 }
 
 const s = new Sabaki();
 const sNano = new Sabaki();
-for (const plug of Object.values(plugins)) {
+for (const { plugin: plug, modelDir: bundled } of Object.values(plugins)) {
 	// Variante mini si le workflow existe en ONNX, sinon nano tel quel.
+	// Poids embarques du plugin en priorite (aucun telechargement), sinon HF.
 	const wf = plug.manifest.domain;
 	sNano.register(plug);
 	try {
-		s.register(await miniClassifier(plug.manifest, wf));
-		console.log(`spécialiste mini: ${wf}`);
+		s.register(
+			await miniClassifier(plug.manifest, wf, {
+				modelDir: bundled,
+			}),
+		);
+		console.log(`spécialiste mini: ${wf}${bundled ? " (bundle)" : ""}`);
 	} catch {
 		s.register(plug);
 		console.log(`spécialiste nano: ${wf}`);

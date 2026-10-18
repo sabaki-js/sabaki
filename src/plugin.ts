@@ -83,6 +83,8 @@ export function nanoClassifier(
  * @param {string} workflow - The model name (e.g. `"customer_service"`).
  * @param {{ primary?: string; version?: string; variant?: "int8" | "fp32" }} opts - Question,
  * release version (default `"v0.2.0"`) and precision (default `"int8"`).
+ * Pass `opts.modelDir` to use weights bundled inside a plugin package
+ * (offline, no download) instead of the HF cache.
  * @returns {Promise<SabakiPlugin>} The plugin (with `classifyAsync`).
  * @example
  * ```ts
@@ -98,6 +100,8 @@ export async function miniClassifier(
 		version?: string;
 		variant?: "int8" | "fp32";
 		joinFrom?: boolean;
+		/** Dossier de poids local (ex: plugin bundle) - prioritaire sur le telechargement. */
+		modelDir?: string;
 	} = {},
 ): Promise<
 	SabakiPlugin & {
@@ -105,7 +109,7 @@ export async function miniClassifier(
 	}
 > {
 	const primary = opts.primary ?? manifest.primary ?? manifest.questions[0]!;
-	const dir = await ensureMiniModel(workflow, opts.version, opts.variant);
+	const dir = opts.modelDir ?? (await ensureMiniModel(workflow, opts.version, opts.variant));
 	const mini = await loadMini(dir);
 	const classifyAsync = async (input: SabakiInput): Promise<ClassifyOutput> => {
 		const q = input.question ?? primary;
