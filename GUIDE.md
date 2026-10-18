@@ -84,6 +84,23 @@ inputs (0.2–0.5 confidence on dragons, recipes and empty strings) - the
 property that makes "automate above 0.8" safe. Temperature scaling is
 planned (see Laya's `fit_temperature_map`).
 
+## 4b. Shipping mini weights (offline-first)
+
+Depuis les versions `1.0.2` (4 workflows) / `1.1.2` (mail), les poids mini
+sont **embarqués dans le package** (`models/<workflow>-int8/` + `modelDir`
+exporté) : `npm i` suffit, aucun téléchargement au runtime, mode avion OK.
+
+```ts
+import { miniClassifier, type SabakiPlugin } from "sabaki";
+import plugin, { modelDir } from "@sabaki-js/customer-service";
+// modelDir -> ./models/customer-service-int8 (fallback HF sinon)
+const mini = await miniClassifier(plugin.manifest, "customer_service", { modelDir });
+```
+
+Mettre à jour les poids = publier un patch du plugin (la CI signe et
+publie via trusted publishing). `ensureMiniModel()` reste disponible en
+repli (variantes fp32, autres workflows).
+
 ## 5. Benchmarks
 
 Typed-decisions (`LocalLLaMA/typed-decisions`, the benchmark Jev, Laya and

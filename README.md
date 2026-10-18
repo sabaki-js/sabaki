@@ -53,7 +53,7 @@ flowchart LR
 
 **Plugins** (`definePlugin` / `nanoClassifier` / `miniClassifier` / `autoClassifier`): the minimal contract is `{ manifest, classify }` - sync or async. Specialists ship fixed questions; the generalist answers **runtime-defined** questions (`instructions` + `criteria`, up to 255 options) with one forward pass per option and argmax.
 
-**Modes**: `nano` (TF-IDF + LogReg, zero deps, <1 ms) → `mini` (MiniLM ONNX int8, 22 MB, SHA256-verified auto-download, ~20 ms) → generalist fallback. `decide()` stays sync (nano); `decideAsync()` unlocks ONNX.
+**Modes**: `nano` (TF-IDF + LogReg, zero deps, <1 ms) → `mini` (MiniLM ONNX int8, 22 MB, **embarqué dans le plugin depuis les versions 1.0.2/1.1.2 — zéro téléchargement, fonctionne offline** ; fallback HF via `ensureMiniModel`) → generalist fallback. `decide()` stays sync (nano); `decideAsync()` unlocks ONNX.
 
 ## Jev-compatible serving
 
