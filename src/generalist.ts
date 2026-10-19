@@ -6,6 +6,8 @@
 import fs from "fs";
 import path from "path";
 import { encode, loadVocab } from "./wordpiece.js";
+import { encodeUnigram, loadUnigram, type UnigramVocab } from "./unigram.js";
+import type { MiniVocab } from "./wordpiece.js";
 import type { ClassifyOutput, SabakiInput } from "./index.js";
 
 export interface GeneralistInput extends SabakiInput {
@@ -31,7 +33,9 @@ function softmax(a: number[]): number[] {
 interface GeneralistBackend {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ort: any;
-	vocab: Parameters<typeof encode>[1];
+	vocab: MiniVocab | UnigramVocab;
+	/** Encoder matching the tokenizer (`wordpiece` BERT-style, `unigram` SentencePiece). */
+	enc: "wordpiece" | "unigram";
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sess: any;
 	/** Model id from `config.json` (`model`), or `"sabaki-generalist"` when absent. */
@@ -52,11 +56,11 @@ export function loadGeneralist(modelDir: string) {
 				throw new Error("generalist requiert onnxruntime-node");
 			});
 			const ort = (ortMod.default ?? ortMod) as typeof ortMod.default;
-			const vocab = loadVocab(
-				JSON.parse(
-					fs.readFileSync(path.join(modelDir, "tokenizer", "tokenizer.json"), "utf8"),
-				),
-			);
+			const tokJson = JSON.parse(
+				fs.readFileSync(path.join(modelDir, "tokenizer", "tokenizer.json"), "utf8"),
+			) as { model?: { type?: string } };
+			const enc = tokJson?.model?.type === "Unigram" ? "unigram" : "wordpiece";
+			const vocab = enc === "unigram" ? loadUnigram(tokJson) : loadVocab(tokJson);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			const sess = await ort.InferenceSession.create(
 				path.join(modelDir, "generalist.onnx"),
@@ -71,7 +75,7 @@ export function loadGeneralist(modelDir: string) {
 			} catch {
 				/* pas de config : id générique */
 			}
-			return { ort, vocab, sess, model };
+			return { ort, vocab, enc, sess, model };
 		})();
 		cache.set(modelDir, p);
 	}
@@ -79,16 +83,17 @@ export function loadGeneralist(modelDir: string) {
 		/** Model id (`config.json` → `model`, sinon `"sabaki-generalist"`). */
 		model: p!.then((b) => b.model),
 		decide: async (input: GeneralistInput): Promise<ClassifyOutput> => {
-			const { ort, vocab, sess } = await p!;
+			const { ort, vocab, enc, sess } = await p!;
 			const options =
 				input.options && input.options.length >= 2 ? input.options.slice(0, 8) : ["yes", "no"];
 			const Tensor = ort.Tensor;
 			const scores: number[] = [];
 			for (const o of options) {
-				const { ids, mask } = encode(
-					`${input.question ?? "decision"} [SEP] ${o} [SEP] ${input.state}`,
-					vocab,
-				);
+				const text = `${input.question ?? "decision"} [SEP] ${o} [SEP] ${input.state}`;
+				const { ids, mask } =
+					enc === "unigram"
+						? encodeUnigram(text, vocab as UnigramVocab)
+						: encode(text, vocab as Parameters<typeof encode>[1]);
 				const feeds = {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					input_ids: new Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),

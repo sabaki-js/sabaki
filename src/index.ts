@@ -143,6 +143,8 @@ export function mapQuestion(
 export { featurize, predict } from "./logreg.js";
 export type { ModelWeights, QuestionWeights } from "./logreg.js";
 export { encode as wordpieceEncode, loadVocab } from "./wordpiece.js";
+export { encodeUnigram, loadUnigram } from "./unigram.js";
+export type { UnigramVocab } from "./unigram.js";
 export type { MiniVocab } from "./wordpiece.js";
 export { loadMini } from "./mini.js";
 export type { MiniModel } from "./mini.js";
