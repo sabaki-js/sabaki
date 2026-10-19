@@ -17,7 +17,7 @@ const sabaki = await import(HERE + "/../dist/index.js");
 const { Sabaki, loadGeneralist, definePlugin } = sabaki;
 
 function parseArgs(argv) {
-	const o = { cmd: null, out: null, plugins: [], generalistDir: null, multiDir: null };
+	const o = { cmd: null, out: null, plugins: [], generalistDir: null, multiDir: null, jobs: 4 };
 	let i = 0;
 	o.cmd = argv[i++];
 	if (!o.cmd || o.cmd === "--help" || o.cmd === "-h") {
@@ -30,6 +30,7 @@ function parseArgs(argv) {
 		else if (a === "--plugin") o.plugins.push(argv[i++]);
 		else if (a === "--generalist-dir") o.generalistDir = argv[i++];
 		else if (a === "--multi-dir") o.multiDir = argv[i++];
+		else if (a === "--jobs") o.jobs = Math.max(1, parseInt(argv[i++], 10) || 1);
 		else if (!a.startsWith("--") && !o.input) o.input = a;
 		else throw new Error(`arg inconnu: ${a}`);
 	}
@@ -79,7 +80,7 @@ async function loadPlugin(spec, cwd) {
 }
 
 const LATIN = new Set(["de", "en", "es", "fr", "id", "it", "pt", "tr", "vi"]);
-const USAGE = `bunkitsu resolve input.csv --out results.csv [--plugin <path|pkg>]...
+const USAGE = `bunkitsu resolve input.csv --out results.csv [--plugin <path|pkg>]... [--jobs 4]
   --generalist-dir <dir>   fallback mini (defaut: SABAKI_GENERALIST_DIR)
   --multi-dir <dir>        fallback multilingue non-latin (defaut: SABAKI_MULTI_DIR)
 Colonnes entree: state, question, type, options (options separees par |).
@@ -128,15 +129,26 @@ for (const need of ["state", "question", "type"]) {
 	if (ci(need) < 0) throw new Error(`colonne manquante: ${need}`);
 }
 const out = [["state", "question", "type", "decision", "confidence", "probs", "domain", "model"]];
-for (const r of rows.slice(1)) {
-	const state = r[ci("state")] ?? "";
-	const question = r[ci("question")] || undefined;
-	const type = (r[ci("type")] || "choice").trim();
-	const opts = ci("options") >= 0 ? (r[ci("options")] ?? "").split("|").map((x) => x.trim()).filter(Boolean) : [];
-	const res = await s.decideAsync({ state, question, ...(opts.length ? { options: opts } : {}) });
-	const probs = res.probabilities ? JSON.stringify(res.probabilities) : "";
-	out.push([state, question ?? "", type, res.decision ?? "", res.confidence ?? "", probs, res.domain ?? "", res.model ?? res.plugin ?? ""]);
-	if (out.length % 50 === 0) console.log(`${out.length - 1} lignes...`);
+const body = rows.slice(1);
+const results = new Array(body.length);
+// Lignes independantes : pool borne, ordre preserve.
+let next = 0;
+async function worker() {
+	while (next < body.length) {
+		const k = next++;
+		const r = body[k];
+		const state = r[ci("state")] ?? "";
+		const question = r[ci("question")] || undefined;
+		const type = (r[ci("type")] || "choice").trim();
+		const opts = ci("options") >= 0 ? (r[ci("options")] ?? "").split("|").map((x) => x.trim()).filter(Boolean) : [];
+		const res = await s.decideAsync({ state, question, ...(opts.length ? { options: opts } : {}) });
+		const probs = res.probabilities ? JSON.stringify(res.probabilities) : "";
+		results[k] = [state, question ?? "", type, res.decision ?? "", res.confidence ?? "", probs, res.domain ?? "", res.model ?? res.plugin ?? ""];
+		const done = results.filter(Boolean).length;
+		if (done % 50 === 0) console.log(`${done}/${body.length} lignes...`);
+	}
 }
+await Promise.all(Array.from({ length: Math.min(o.jobs, body.length) }, worker));
+for (const r of results) out.push(r);
 fs.writeFileSync(o.out, out.map((r) => r.map(csvCell).join(",")).join("\n") + "\n");
 console.log(`-> ${o.out} (${out.length - 1} lignes)`);

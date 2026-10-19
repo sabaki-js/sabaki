@@ -46,20 +46,26 @@ function tokens(s: string): string[] {
 export function featurize(state: string, w: ModelWeights): number[] {
 	const counts = new Map<string, number>();
 	for (const t of tokens(state)) counts.set(t, (counts.get(t) ?? 0) + 1);
+	const index = new Map<string, number>();
+	for (let i = 0; i < w.vocab.length; i++) index.set(w.vocab[i]!, i);
 	const x = new Array(w.vocab.length).fill(0);
 	let norm = 0;
-	for (let i = 0; i < w.vocab.length; i++) {
-		const v = w.vocab[i]!;
-		const c = counts.get(v) ?? 0;
-		if (c > 0) {
-			const tf = 1 + Math.log(c);
-			const val = tf * w.idf[i]!;
-			x[i] = val;
-			norm += val * val;
-		}
+	// Touche seulement les termes presents (creux) au lieu de balayer 3000 dims.
+	for (const [t, c] of counts) {
+		const i = index.get(t);
+		if (i === undefined) continue;
+		const tf = 1 + Math.log(c);
+		const val = tf * w.idf[i]!;
+		x[i] = val;
+		norm += val * val;
 	}
 	norm = Math.sqrt(norm);
-	if (norm > 0) for (let i = 0; i < x.length; i++) x[i]! /= norm;
+	if (norm > 0) {
+		for (const [t] of counts) {
+			const i = index.get(t);
+			if (i !== undefined && x[i] !== 0) x[i]! /= norm;
+		}
+	}
 	return x;
 }
 
