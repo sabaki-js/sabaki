@@ -203,6 +203,7 @@ const server = http.createServer(async (req, res) => {
 			const router = mode === "nano" ? sNano : s;
 			const answers = {};
 			const models = new Set();
+			const t0 = Date.now();
 			for (const [q, spec] of Object.entries(questions)) {
 				const err = validateJevQuestion(spec);
 				if (err) return json(422, { error: `${q}: ${err}` });
@@ -215,7 +216,7 @@ const server = http.createServer(async (req, res) => {
 			return json(200, {
 				model: models.size === 1 ? [...models][0] : `sabaki-routed(${[...models].join(",")})`,
 				answers,
-				usage: { input_tokens: st.length >> 2, output_tokens: 0 },
+				usage: { input_tokens: st.length >> 2, output_tokens: 0, latency_ms: Date.now() - t0 },
 			});
 		} catch (e) {
 			return json(400, { error: String(e.message ?? e) });
