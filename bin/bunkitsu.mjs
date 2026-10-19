@@ -20,6 +20,10 @@ function parseArgs(argv) {
 	const o = { cmd: null, out: null, plugins: [], generalistDir: null, multiDir: null };
 	let i = 0;
 	o.cmd = argv[i++];
+	if (!o.cmd || o.cmd === "--help" || o.cmd === "-h") {
+		console.log(USAGE);
+		process.exit(o.cmd ? 0 : 2);
+	}
 	while (i < argv.length) {
 		const a = argv[i++];
 		if (a === "--out") o.out = argv[i++];
@@ -75,6 +79,11 @@ async function loadPlugin(spec, cwd) {
 }
 
 const LATIN = new Set(["de", "en", "es", "fr", "id", "it", "pt", "tr", "vi"]);
+const USAGE = `bunkitsu resolve input.csv --out results.csv [--plugin <path|pkg>]...
+  --generalist-dir <dir>   fallback mini (defaut: SABAKI_GENERALIST_DIR)
+  --multi-dir <dir>        fallback multilingue non-latin (defaut: SABAKI_MULTI_DIR)
+Colonnes entree: state, question, type, options (options separees par |).
+Sortie: + decision, confidence, probs (JSON), domain, model.`;
 const o = parseArgs(process.argv.slice(2));
 if (o.cmd !== "resolve") throw new Error(`commande inconnue: ${o.cmd} (resolve uniquement)`);
 
