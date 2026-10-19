@@ -46,6 +46,13 @@ export interface PluginManifest {
 	/** Routing keywords (see `Sabaki.route` for scoring). */
 	keywords: string[];
 	/**
+	 * ISO language codes served (`["de","en",...]`, see `LANGID_LANGS`).
+	 * When set, the plugin only competes for inputs in these languages
+	 * (`Sabaki.route` filters by `detectLanguage`). Unset = all languages.
+	 * Allows several plugins on one domain (e.g. latin vs CJK phishing).
+	 */
+	languages?: string[];
+	/**
 	 * Routing threshold on `hits / sqrt(|keywords|)`. Default: `0.15`.
 	 * Short subjects (emails): `0.05`. Below it, the domain is `"unknown"`.
 	 */
@@ -138,6 +145,7 @@ export type { GeneralistInput } from "./generalist.js";
 export { serveHttp } from "./serve.js";
 export type { ServeOptions, Served } from "./serve.js";
 import { serveHttp as _serveHttp, type ServeOptions, type Served } from "./serve.js";
+import { detectLanguage as _detectLanguage } from "./langid.js";
 export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export { detectLanguage, detectScriptLang, LANGID_LANGS } from "./langid.js";
 export type { LangDetect } from "./langid.js";
@@ -210,8 +218,23 @@ export class Sabaki {
 		plugin: SabakiPlugin | null;
 	} {
 		const words = tokens(state);
+		// Axe langue : les plugins qui déclarent `languages` ne concourent
+		// que pour leurs langues (ex phishing latin vs CJK). Texte trop
+		// court/sans lettres -> pas de filtre (tout le monde concourt).
+		let lang: string | null = null;
+		if (/[A-Za-z\u00C0-\u024F\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]{3}/.test(state)) {
+			try {
+				lang = _detectLanguage(state).lang;
+			} catch {
+				lang = null;
+			}
+		}
 		let best: { plugin: SabakiPlugin; score: number } | null = null;
 		for (const p of this.plugins) {
+			const langs = p.manifest.languages;
+			if (lang && langs && langs.length > 0 && !langs.includes(lang)) {
+				continue;
+			}
 			const kws = this.kwsCache.get(p) ?? [];
 			if (kws.length === 0) {
 				// Plugin catch-all (ex generalist) : route toujours, au seuil.
