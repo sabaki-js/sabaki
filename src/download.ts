@@ -15,6 +15,7 @@ const CACHE = path.join(os.homedir(), ".cache", "sabaki");
 const FALLBACK_VERSIONS: Record<string, string> = {
 	minilaya: "v0.2.0",
 	generalist: "v1.0.0",
+	"generalist-multi": "v1.1.0-multi-beta",
 	mail: "v0.5.0",
 	doom: "v0.3.0",
 };
@@ -30,7 +31,7 @@ export async function resolveVersion(family: string, version?: string): Promise<
 	try {
 		if (!fresh) {
 			await fetchFile(
-				"https://raw.githubusercontent.com/sabaki-js/sabaki-models/main/versions.json",
+				"https://raw.githubusercontent.com/sabaki-js/sabaki-models/master/versions.json",
 				cached,
 			);
 		}
@@ -85,10 +86,11 @@ async function fetchFile(url: string, dest: string): Promise<void> {
  * const backend = loadGeneralist(dir);
  * ```
  */
-export async function ensureGeneralist(version?: string): Promise<string> {
-	version = await resolveVersion("generalist", version);
+export async function ensureGeneralist(version?: string, family = "generalist"): Promise<string> {
+	version = await resolveVersion(family, version);
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
-	const dir = path.join(CACHE, version, "generalist");
+	const sub = family === "generalist" ? "generalist" : family;
+	const dir = path.join(CACHE, version, sub);
 	fs.mkdirSync(dir, { recursive: true });
 	const sums: Record<string, string> = {};
 	const sumsCached = path.join(CACHE, version, "SHA256SUMS_GENERALIST");
