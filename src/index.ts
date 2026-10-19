@@ -175,6 +175,8 @@ export type { DefinePluginOptions } from "./plugin.js";
 export class Sabaki {
 	private plugins: SabakiPlugin[] = [];
 	private kwsCache = new Map<SabakiPlugin, string[]>();
+	/** True dès qu'un plugin déclare `languages` : seul cas où `route()` paie langid. */
+	private hasLangPlugins = false;
 	/**
 	 * Fallback (typically the bundled generalist): answers when no
 	 * registered specialist wins routing. Only registered (= installed)
@@ -215,6 +217,7 @@ export class Sabaki {
 			plugin,
 			(plugin.manifest.keywords ?? []).map((k) => k.toLowerCase()),
 		);
+		if (plugin.manifest.languages?.length) this.hasLangPlugins = true;
 		return this;
 	}
 
@@ -235,7 +238,10 @@ export class Sabaki {
 		// que pour leurs langues (ex phishing latin vs CJK). Texte trop
 		// court/sans lettres -> pas de filtre (tout le monde concourt).
 		let lang: string | null = null;
-		if (/[A-Za-z\u00C0-\u024F\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]{3}/.test(state)) {
+		if (
+			this.hasLangPlugins &&
+			/[A-Za-z\u00C0-\u024F\u0400-\u04FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]{3}/.test(state)
+		) {
 			try {
 				lang = _detectLanguage(state).lang;
 			} catch {

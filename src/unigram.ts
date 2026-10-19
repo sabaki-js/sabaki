@@ -14,6 +14,7 @@ export interface UnigramVocab {
 	unkId: number;
 	bosId: number;
 	eosId: number;
+	padId: number;
 	maxPiece: number;
 }
 
@@ -40,6 +41,7 @@ export function loadUnigram(tokenizerJson: unknown): UnigramVocab {
 		unkId: t.model.unk_id ?? 3,
 		bosId,
 		eosId,
+		padId: idByPiece.get("<pad>") ?? 1,
 		maxPiece,
 	};
 }
