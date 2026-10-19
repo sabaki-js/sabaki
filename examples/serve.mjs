@@ -74,10 +74,15 @@ for (const { plugin: plug, modelDir: bundled } of Object.values(plugins)) {
 }
 // Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
 // Dir via argv[3], sinon SABAKI_GENERALIST_DIR (explicite > env, pm2-safe).
+// Routage par langue : latin -> mini (defaut prouve), non-latin -> multilingue
+// (SABAKI_MULTI_DIR). Un seul serve, label du backend effectif dans `model`.
 const GENERALIST_DIR = process.argv[3] ?? process.env.SABAKI_GENERALIST_DIR;
+const MULTI_DIR = process.env.SABAKI_MULTI_DIR;
 const { loadGeneralist: _loadGeneralist, definePlugin: _definePlugin } = sabaki;
-if (GENERALIST_DIR) {
-	const backend = _loadGeneralist(GENERALIST_DIR);
+const LATIN_FALLBACK = new Set(["de", "en", "es", "fr", "id", "it", "pt", "tr", "vi"]);
+if (GENERALIST_DIR || MULTI_DIR) {
+	const miniBe = GENERALIST_DIR ? _loadGeneralist(GENERALIST_DIR) : null;
+	const multiBe = MULTI_DIR ? _loadGeneralist(MULTI_DIR) : null;
 	const fb = _definePlugin({
 		manifest: {
 			name: "@sabaki-js/generalist",
@@ -86,11 +91,27 @@ if (GENERALIST_DIR) {
 			questions: ["decision"],
 			keywords: [],
 		},
-		classify: (input) => backend.decide(input),
+		classify: async (input) => {
+			let be = miniBe;
+			let tag = "sabaki-generalist-mini";
+			try {
+				const lg = sabaki.detectLanguage(input.state ?? "").lang;
+				if (multiBe && !LATIN_FALLBACK.has(lg)) {
+					be = multiBe;
+					tag = "sabaki-generalist-multi-v8";
+				}
+			} catch {
+				/* defaut mini */
+			}
+			const use = be ?? miniBe ?? multiBe;
+			const r = await use.decide(input);
+			return { ...r, model: tag };
+		},
 	});
 	s.setFallback(fb);
 	sNano.setFallback(fb);
-	backend.model.then((m) => console.log(`fallback generalist actif (${m})`));
+	if (miniBe) miniBe.model.then((m) => console.log(`fallback mini actif (${m})`));
+	if (multiBe) multiBe.model.then((m) => console.log(`fallback multi actif (${m})`));
 }
 const GENERALIST_MODEL =
 	GENERALIST_DIR

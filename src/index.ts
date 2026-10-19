@@ -70,6 +70,12 @@ export interface ClassifyOutput {
 	domain: string;
 	/** Full option → probability map when available (Jev `probabilities`). */
 	probabilities?: Record<string, number>;
+	/**
+	 * Responder model id (set by dispatched fallbacks serving several
+	 * backends, e.g. mini vs multilingual). `answerJev` prefers it over
+	 * the static `generalistModel` when present.
+	 */
+	model?: string;
 }
 
 export interface SabakiPlugin {

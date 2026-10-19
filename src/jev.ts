@@ -123,5 +123,5 @@ export async function answerJev(
 			model: generalistModel,
 		};
 	}
-	return { answer: toJevAnswer(q.type, options, out), model: generalistModel };
+	return { answer: toJevAnswer(q.type, options, out), model: out.model ?? generalistModel };
 }
