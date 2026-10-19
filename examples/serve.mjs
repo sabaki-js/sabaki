@@ -39,6 +39,22 @@ for (const wf of WF) {
 
 const s = new Sabaki();
 const sNano = new Sabaki();
+// Plugins sécurité (cross-encoders, poids bundlés) : liens relatifs
+// tant que @sabaki-js/phishing-detection n'est pas sur npm.
+for (const [tag, rel] of [
+	["phishing", "../../plugins/plugin-phishing-detection/index.js"],
+	["jailbreak", "../../plugins/plugin-jailbreak/index.js"],
+]) {
+	try {
+		const mod = await import(new URL(rel, import.meta.url));
+		const plug = mod.default ?? mod;
+		s.register(plug);
+		sNano.register(plug);
+		console.log(`plugin sécurité: ${tag} (${plug.manifest?.domain})`);
+	} catch {
+		console.log(`plugin sécurité manquant: ${tag} (repli routage seul)`);
+	}
+}
 for (const { plugin: plug, modelDir: bundled } of Object.values(plugins)) {
 	// Variante mini si le workflow existe en ONNX, sinon nano tel quel.
 	// Poids embarques du plugin en priorite (aucun telechargement), sinon HF.
