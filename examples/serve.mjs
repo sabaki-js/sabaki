@@ -3,6 +3,7 @@
 // Usage: node examples/serve.mjs [port] - dev tool, add auth before exposing.
 import http from "http";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -185,7 +186,7 @@ const server = http.createServer(async (req, res) => {
 		}
 	}
 	if (req.method === "GET" && req.url === "/health")
-		return json(200, { status: "ok", model: "sabaki-mini" });
+		return json(200, { status: "ok", model: "sabaki-mini", cpu: os.cpus()[0]?.model ?? "unknown" });
 	if (req.method === "GET" && req.url === "/v1/models")
 		return json(200, { data: [{ id: "sabaki-mini" }] });
 	if (req.method === "POST" && req.url === "/v1/systemone") {
