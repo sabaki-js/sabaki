@@ -57,6 +57,16 @@ export interface PluginManifest {
 	 * Short subjects (emails): `0.05`. Below it, the domain is `"unknown"`.
 	 */
 	threshold?: number;
+	/**
+	 * Vocabulaires de traduction (voie déclarative) : questions natives
+	 * reconnues via `questions`, labels natifs remappés via `options`.
+	 * Ex : `{ questions: { "suspicious": ["scam", "arnaque"] },
+	 *        options: { "yes": ["phishing", "attack"] } }`.
+	 */
+	aliases?: {
+		questions?: Record<string, string[]>;
+		options?: Record<string, string[]>;
+	};
 	/** Supported modes (`nano` bundled, `mini` downloaded ONNX). */
 	modes?: Record<string, string>;
 }
@@ -138,11 +148,21 @@ export function mapQuestion(
 	instructions: string | undefined,
 	native: string[],
 	primary: string,
+	aliases?: Record<string, string[]>,
 ): string {
 	if (qid && native.includes(qid)) return qid;
 	const text = `${instructions ?? ""}`.toLowerCase();
 	const hit = native.find((n) => text.includes(n.toLowerCase()));
-	return hit ?? primary;
+	if (hit) return hit;
+	// Alias : la question native est reconnue via ses formulations alternatives.
+	if (aliases) {
+		for (const n of native) {
+			for (const a of aliases[n] ?? []) {
+				if (a && text.includes(a.toLowerCase())) return n;
+			}
+		}
+	}
+	return primary;
 }
 
 export { featurize, predict } from "./logreg.js";

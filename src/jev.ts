@@ -36,8 +36,22 @@ export function toJevAnswer(
 	type: JevQuestion["type"],
 	options: string[],
 	out: ClassifyOutput,
+	aliases?: Record<string, string[]>,
 ): JevAnswer {
 	const probs = out.probabilities ?? { [String(out.decision)]: out.confidence };
+	// Remappe le label natif vers l'espace d'options de l'appelant :
+	// exact, alias déclaré, sinon tel quel (comportement historique).
+	const mapLabel = (d: string): string => {
+		if (options.includes(d)) return d;
+		if (aliases) {
+			const low = (o: string) => o.toLowerCase();
+			for (const o of options) {
+				const als = aliases[d] ?? [];
+				if (als.some((a) => a && (low(o) === a.toLowerCase() || low(o).includes(a.toLowerCase()) || a.toLowerCase().includes(low(o))))) return o;
+			}
+		}
+		return d;
+	};
 	if (type === "noul") {
 		const p = probs[options[0]!] ?? (out.decision === options[0] ? out.confidence : 1 - out.confidence);
 		return { type: "noul", noul: round3(p) };
@@ -52,10 +66,15 @@ export function toJevAnswer(
 			confidence: out.confidence,
 		};
 	}
+	const remapped: Record<string, number> = {};
+	for (const [k, v] of Object.entries(probs)) {
+		const m = mapLabel(k);
+		remapped[m] = (remapped[m] ?? 0) + (typeof v === "number" ? v : 0);
+	}
 	return {
 		type: "choice",
-		choice: String(out.decision),
-		probabilities: Object.fromEntries(options.map((o) => [o, round3(probs[o] ?? 0)])),
+		choice: mapLabel(String(out.decision)),
+		probabilities: Object.fromEntries(options.map((o) => [o, round3(remapped[o] ?? (o === mapLabel(String(out.decision)) ? out.confidence : 0))])),
 		confidence: out.confidence,
 	};
 }
@@ -92,17 +111,24 @@ export async function answerJev(
 		// Critères explicites sur question non native -> fallback (seul le
 		// generalist lit vraiment des critères arbitraires).
 		const explicit = q.criteria || q.options;
+		const itext = `${q.instructions ?? ""} ${q.query ?? ""}`.toLowerCase();
 		const nativeHit =
 			native.includes(qid) ||
-			native.some((n) => `${q.instructions ?? ""} ${q.query ?? ""}`.toLowerCase().includes(n.toLowerCase()));
+			native.some((n) => itext.includes(n.toLowerCase())) ||
+			native.some(
+				(n) =>
+					manifest.aliases?.questions?.[n]?.some(
+						(a) => a && itext.includes(a.toLowerCase()),
+					) ?? false,
+			);
 		if (!explicit || nativeHit) {
-			const question = mapQuestion(qid, `${q.instructions ?? ""} ${q.query ?? ""}`, native, manifest.primary ?? native[0]!);
+			const question = mapQuestion(qid, `${q.instructions ?? ""} ${q.query ?? ""}`, native, manifest.primary ?? native[0]!, manifest.aliases?.questions);
 			const input: SabakiInput = { state, question };
 			const out = (await route.plugin.classify(input)) as ClassifyOutput;
 			// Sans criteria explicites : l'espace de réponse = la décision elle-même.
 			const opts = explicit ? options : [String(out.decision)];
 			return {
-				answer: toJevAnswer(q.type, opts, out),
+				answer: toJevAnswer(q.type, opts, out, manifest.aliases?.options),
 				model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
 			};
 		}
