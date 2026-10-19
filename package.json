@@ -1,8 +1,8 @@
 {
   "name": "sabaki",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "license": "MIT",
-  "description": "Sabaki — routeur léger vers des plugins de décision typée (zéro dépendance runtime).",
+  "description": "Sabaki \u2014 routeur l\u00e9ger vers des plugins de d\u00e9cision typ\u00e9e (z\u00e9ro d\u00e9pendance runtime).",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
