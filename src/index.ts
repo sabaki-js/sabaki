@@ -90,6 +90,11 @@ export interface SabakiPlugin {
 export interface DecideOutput extends ClassifyOutput {
 	/** Name of the deciding plugin (`manifest.name`), or `null` when `unknown`. */
 	plugin: string | null;
+	/**
+	 * Responder model id when it differs from the plugin (dispatched
+	 * fallbacks serving several backends). Falls back to `plugin`.
+	 */
+	model?: string;
 }
 
 /**
@@ -346,7 +351,7 @@ export class Sabaki {
 		if (r.domain === "unknown" || !r.plugin) {
 			if (this.fallback) {
 				const out = await this.fallback.classify(input);
-				return { ...out, domain: out.domain, plugin: this.fallback.manifest.name };
+				return { ...out, domain: out.domain, plugin: this.fallback.manifest.name, model: out.model };
 			}
 			return { domain: "unknown", decision: null, confidence: 0, plugin: null };
 		}
@@ -354,7 +359,7 @@ export class Sabaki {
 		const native = manifest.questions;
 		const question = mapQuestion(input.question, undefined, native, manifest.primary ?? native[0]!);
 		const out = await r.plugin.classify({ ...input, question });
-		return { ...out, domain: r.domain, plugin: r.plugin.manifest.name };
+		return { ...out, domain: r.domain, plugin: r.plugin.manifest.name, model: `${manifest.name}@${manifest.version}` };
 	}
 
 	/**
