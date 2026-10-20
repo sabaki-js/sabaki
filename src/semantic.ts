@@ -6,19 +6,24 @@
  * missed. It is not a router: the plugin is already chosen, and the layer
  * may only confirm it.
  *
- * Measured on a 51-case hand-written set (EN/FR/ES/DE/IT/PT/RU/JA/ZH),
- * variants derived from the manifests, bi-encoder int8 (119 MB, 4 ms):
- *   93% recall, 0% false positives at 0.50 (17% FP at 0.45, 82% recall at
- *   0.52, so 0.50 is the operating point and 0.45 the floor).
- * End to end in `answerJev`, the specialist serves 27/28 positive wordings
- * versus 11/28 with lexical aliases alone, still with 0/23 false positives.
- * Short queries score low, and a per-plugin threshold cannot see
- * cross-plugin confusion ("is this a scam?" scores 0.57 against the
- * jailbreak description), hence the competition below.
+ * NEGATIVE RESULT, layer disabled by default. Measured on a 54-case
+ * hand-written set (EN/FR/ES/DE/IT/PT/RU/JA/ZH), variants derived from the
+ * manifests, int8 bi-encoder (119 MB, 4 ms per request):
+ *   - out-of-domain wordings are rejected cleanly;
+ *   - in-domain questions about the same text are NOT: "ce message est-il
+ *     bien redige ?" scores 0.608, "quel est le ton de ce message ?" 0.564,
+ *     above the 0.50 threshold and above several true positives (0.50-0.67);
+ *   - end to end in `answerJev`: 27/28 positives served versus 11/28 with
+ *     lexical aliases alone, but 3/26 negatives answered by the wrong
+ *     specialist (12%).
+ * Contrasting against generic "about this message" questions was tried: it
+ * removes the false positives only by dropping true positives to ~0.04 of
+ * margin (see examples/eval_contrast.mjs). A bi-encoder ranks topic, not
+ * intent; question routing here needs a cross-encoder trained for it.
  *
- * Caveat: the evaluation set was written by the author. 0/23 is not a
- * promise of 0% on real traffic; keep the layer opt-in and the fallback
- * reachable.
+ * The plumbing is kept for that future model: variants per question,
+ * precomputed embeddings, cross-plugin competition (a per-plugin threshold
+ * alone accepts "is this a scam?" as a jailbreak question, 0.57).
  */
 import { encodeUnigram, loadUnigram, type UnigramVocab } from "./unigram.js";
 

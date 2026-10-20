@@ -40,6 +40,10 @@ export default [
 	["phishing", "cet email est en anglais", false],
 	["phishing", "send me the invoice please", false],
 	["phishing", "this message is quite long", false],
+	// trouves en demo live : question sur le message, pas sur sa dangerosite
+	["phishing", "ce message est-il bien redige ?", false],
+	["phishing", "quel est le ton de ce message ?", false],
+	["phishing", "ce message contient-il une faute ?", false],
 	// --- jailbreak : positifs ---
 	["jailbreak", "is this a jailbreak?", true],
 	["jailbreak", "bypass attempt?", true],
