@@ -1,0 +1,12 @@
+{
+	"name": "sabaki-wasm-plugin-proto",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "asc assembly/index.ts -o build/proto-plugin.wasm --optimize --exportRuntime && node scripts/append-section.mjs build/proto-plugin.wasm"
+	},
+	"devDependencies": {
+		"assemblyscript": "^0.28.0"
+	}
+}

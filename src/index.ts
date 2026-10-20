@@ -186,6 +186,15 @@ export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
 export { definePlugin, miniClassifier, nanoClassifier, autoClassifier } from "./plugin.js";
 export type { DefinePluginOptions } from "./plugin.js";
+export {
+	loadWasmPlugin,
+	readWasmSpec,
+	WasmSpecError,
+	WASM_SPEC_ID,
+	WASM_SPEC_VERSION,
+	WASM_ABI_VERSION,
+} from "./wasm.js";
+export type { WasmSpec } from "./wasm.js";
 
 /**
  * Router: picks the domain (hence the plugin), then delegates the decision.
