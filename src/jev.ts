@@ -32,6 +32,51 @@ export function criteriaOptions(q: JevQuestion): string[] {
 
 const round3 = (x: number) => Math.round(x * 1000) / 1000;
 
+/**
+ * Projects a native decision onto the caller's option names: exact match,
+ * then declared aliases. Returns `null` when the caller's vocabulary is
+ * disjoint from the specialist's.
+ *
+ * The distinction matters: before, an unmappable decision was returned
+ * verbatim (`choice: "yes"` for options `{clean, danger}`), i.e. a label the
+ * caller never offered, with all probabilities at 0 and a high confidence.
+ *
+ * @param {string[]} options - The caller's option names.
+ * @param {string} decision - The specialist's native label.
+ * @param {Record<string, string[]>} [aliases] - `manifest.aliases.options`.
+ * @returns {string | null} The caller's label, or `null` when unmappable.
+ * @example
+ * ```ts
+ * mapDecision(["safe", "scam"], "yes", { yes: ["phishing", "scam"] }); // "scam"
+ * mapDecision(["clean", "danger"], "yes", { yes: ["phishing"] });      // null
+ * ```
+ */
+export function mapDecision(
+	options: string[],
+	decision: string,
+	aliases?: Record<string, string[]>,
+): string | null {
+	if (options.includes(decision)) return decision;
+	if (aliases) {
+		const low = (o: string) => o.toLowerCase();
+		for (const o of options) {
+			const als = aliases[decision] ?? [];
+			if (
+				als.some(
+					(a) =>
+						a &&
+						(low(o) === a.toLowerCase() ||
+							low(o).includes(a.toLowerCase()) ||
+							a.toLowerCase().includes(low(o))),
+				)
+			) {
+				return o;
+			}
+		}
+	}
+	return null;
+}
+
 export function toJevAnswer(
 	type: JevQuestion["type"],
 	options: string[],
@@ -40,18 +85,29 @@ export function toJevAnswer(
 ): JevAnswer {
 	const probs = out.probabilities ?? { [String(out.decision)]: out.confidence };
 	// Remappe le label natif vers l'espace d'options de l'appelant :
-	// exact, alias déclaré, sinon tel quel (comportement historique).
-	const mapLabel = (d: string): string => {
-		if (options.includes(d)) return d;
-		if (aliases) {
-			const low = (o: string) => o.toLowerCase();
-			for (const o of options) {
-				const als = aliases[d] ?? [];
-				if (als.some((a) => a && (low(o) === a.toLowerCase() || low(o).includes(a.toLowerCase()) || a.toLowerCase().includes(low(o))))) return o;
-			}
+	// exact, alias déclaré, sinon non mappable (voir `mapDecision`).
+	const mapped = mapDecision(options, String(out.decision), aliases);
+	const mapLabel = (d: string): string => mapDecision(options, d, aliases) ?? d;
+	if (mapped === null) {
+		// Vocabulaire disjoint : abstention dans l'espace de l'appelant plutôt
+		// qu'un label inventé. `answerJev` préfère le fallback dans ce cas.
+		if (type === "noul") return { type: "noul", noul: 0 };
+		if (type === "score") {
+			return {
+				type: "score",
+				score: 0,
+				legend: Object.fromEntries(options.map((o, i) => [String(i), o])),
+				probabilities: Object.fromEntries(options.map((_, i) => [String(i), 0])),
+				confidence: 0,
+			};
 		}
-		return d;
-	};
+		return {
+			type: "choice",
+			choice: options[0]!,
+			probabilities: Object.fromEntries(options.map((o) => [o, 0])),
+			confidence: 0,
+		};
+	}
 	if (type === "noul") {
 		const p = probs[options[0]!] ?? (out.decision === options[0] ? out.confidence : 1 - out.confidence);
 		return { type: "noul", noul: round3(p) };
@@ -69,12 +125,17 @@ export function toJevAnswer(
 	const remapped: Record<string, number> = {};
 	for (const [k, v] of Object.entries(probs)) {
 		const m = mapLabel(k);
+		if (!options.includes(m)) continue;
 		remapped[m] = (remapped[m] ?? 0) + (typeof v === "number" ? v : 0);
 	}
+	const total = Object.values(remapped).reduce((a, b) => a + b, 0);
+	const proj = Object.fromEntries(
+		options.map((o) => [o, round3(total > 0 ? (remapped[o] ?? 0) / total : o === mapped ? 1 : 0)]),
+	);
 	return {
 		type: "choice",
-		choice: mapLabel(String(out.decision)),
-		probabilities: Object.fromEntries(options.map((o) => [o, round3(remapped[o] ?? (o === mapLabel(String(out.decision)) ? out.confidence : 0))])),
+		choice: mapped,
+		probabilities: proj,
 		confidence: out.confidence,
 	};
 }
@@ -127,10 +188,15 @@ export async function answerJev(
 			const out = (await route.plugin.classify(input)) as ClassifyOutput;
 			// Sans criteria explicites : l'espace de réponse = la décision elle-même.
 			const opts = explicit ? options : [String(out.decision)];
-			return {
-				answer: toJevAnswer(q.type, opts, out, manifest.aliases?.options),
-				model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
-			};
+			// Vocabulaire disjoint (ex. {clean, danger} vs {phishing, legit}) :
+			// le spécialiste ne peut pas répondre sans inventer un label, donc
+			// on préfère le fallback, qui note chaque option de l'appelant.
+			if (mapDecision(opts, String(out.decision), manifest.aliases?.options) !== null) {
+				return {
+					answer: toJevAnswer(q.type, opts, out, manifest.aliases?.options),
+					model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
+				};
+			}
 		}
 	}
 	const out = await sabaki.decideFallback({

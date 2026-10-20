@@ -179,7 +179,7 @@ export { serveHttp } from "./serve.js";
 export type { ServeOptions, Served } from "./serve.js";
 import { serveHttp as _serveHttp, type ServeOptions, type Served } from "./serve.js";
 import { detectLanguage as _detectLanguage } from "./langid.js";
-export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
+export { answerJev, criteriaOptions, toJevAnswer, mapDecision, validateJevQuestion } from "./jev.js";
 export { detectLanguage, detectScriptLang, LANGID_LANGS } from "./langid.js";
 export type { LangDetect } from "./langid.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
