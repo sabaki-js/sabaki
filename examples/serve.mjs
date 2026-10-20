@@ -118,6 +118,18 @@ const GENERALIST_MODEL =
 	GENERALIST_DIR
 		? await _loadGeneralist(GENERALIST_DIR).model
 		: "sabaki-generalist";
+
+// Préchargement de la voie sémantique : sans ça, la première requête qui en
+// a besoin paie le chargement ONNX + les embeddings de variantes (~800 ms).
+if (process.env.SABAKI_BIENCODER_DIR || process.env.SABAKI_SEMANTIC === "1") {
+	const t0 = Date.now();
+	try {
+		await sabaki.semanticMatch(s, "chauffe");
+		console.log(`voie sémantique prechargee (${Date.now() - t0} ms)`);
+	} catch (e) {
+		console.log(`voie sémantique indisponible: ${e?.message ?? e}`);
+	}
+}
 const minis = {};
 async function miniFor(wf) {
 	if (!(wf in minis)) {
@@ -186,7 +198,13 @@ const server = http.createServer(async (req, res) => {
 		}
 	}
 	if (req.method === "GET" && req.url === "/health")
-		return json(200, { status: "ok", model: "sabaki-mini", cpu: os.cpus()[0]?.model ?? "unknown" });
+		return json(200, {
+			status: "ok",
+			model: "sabaki-mini",
+			cpu: os.cpus()[0]?.model ?? "unknown",
+			// Voie sémantique : configuree (env) et effectivement chargeable.
+			semantic: Boolean(process.env.SABAKI_BIENCODER_DIR || process.env.SABAKI_SEMANTIC === "1"),
+		});
 	if (req.method === "GET" && req.url === "/v1/models")
 		return json(200, { data: [{ id: "sabaki-mini" }] });
 	if (req.method === "POST" && req.url === "/v1/systemone") {

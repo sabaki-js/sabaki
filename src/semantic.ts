@@ -1,12 +1,24 @@
 /**
  * Semantic question mapping (opt-in layer above lexical aliases).
  *
- * When `mapQuestion` finds nothing, embed the user's wording and compare
- * against one sentence-ish description per native question
- * (`manifest.descriptions`, else question + aliases + domain). Best
- * cosine above threshold wins, else primary. Measured on paraphrase
- * probes (FR+EN): 6/6 with margins, unrelated queries far below ---
- * use threshold ~0.3, never below 0.2.
+ * The lexical path (`mapQuestion`) handles declared aliases; this layer
+ * handles free-form wording for the same question once the lexical path
+ * missed. It is not a router: the plugin is already chosen, and the layer
+ * may only confirm it.
+ *
+ * Measured on a 51-case hand-written set (EN/FR/ES/DE/IT/PT/RU/JA/ZH),
+ * variants derived from the manifests, bi-encoder int8 (119 MB, 4 ms):
+ *   93% recall, 0% false positives at 0.50 (17% FP at 0.45, 82% recall at
+ *   0.52, so 0.50 is the operating point and 0.45 the floor).
+ * End to end in `answerJev`, the specialist serves 27/28 positive wordings
+ * versus 11/28 with lexical aliases alone, still with 0/23 false positives.
+ * Short queries score low, and a per-plugin threshold cannot see
+ * cross-plugin confusion ("is this a scam?" scores 0.57 against the
+ * jailbreak description), hence the competition below.
+ *
+ * Caveat: the evaluation set was written by the author. 0/23 is not a
+ * promise of 0% on real traffic; keep the layer opt-in and the fallback
+ * reachable.
  */
 import { encodeUnigram, loadUnigram, type UnigramVocab } from "./unigram.js";
 
@@ -29,6 +41,91 @@ export function describeQuestion(
 		`${question} ${(manifest.aliases?.questions?.[question] ?? []).join(" ")} ${manifest.domain}`.trim()
 	);
 }
+
+/** All wordings the bi-encoder should accept for one question. */
+export function questionVariants(
+	question: string,
+	manifest: { domain: string; questions?: string[]; aliases?: { questions?: Record<string, string[]> }; descriptions?: Record<string, string> },
+): string[] {
+	const out = [describeQuestion(question, manifest), question];
+	for (const a of manifest.aliases?.questions?.[question] ?? []) if (a) out.push(a);
+	return [...new Set(out.filter((v) => v.trim().length > 0))];
+}
+
+/** One candidate question of one plugin, embedded once at startup. */
+export interface SemanticCandidate {
+	plugin: string;
+	question: string;
+	vectors: number[][];
+}
+
+export type SemanticMatch = {
+	plugin: string;
+	question: string;
+	score: number;
+	/** `score` minus the best score of any other plugin. Must be >= 0. */
+	margin: number;
+};
+
+/**
+ * Precomputes the variant embeddings (172 ms for two plugins) so that a
+ * request costs one forward pass (~4 ms int8) instead of six.
+ */
+export async function buildCandidates(
+	plugins: Array<{
+		manifest: {
+			name?: string;
+			questions: string[];
+			domain: string;
+			aliases?: { questions?: Record<string, string[]> };
+			descriptions?: Record<string, string>;
+		};
+	}>,
+	embed: (texts: string[]) => Promise<number[][]>,
+): Promise<SemanticCandidate[]> {
+	const out: SemanticCandidate[] = [];
+	for (const p of plugins) {
+		const name = p.manifest.name ?? p.manifest.domain;
+		for (const q of p.manifest.questions) {
+			const texts = questionVariants(q, p.manifest);
+			const vectors = await embed(texts);
+			out.push({ plugin: name, question: q, vectors });
+		}
+	}
+	return out;
+}
+
+/**
+ * Best candidate for `query`, with the margin over every other plugin.
+ * Pure: the caller decides whether to trust it (threshold + margin).
+ */
+export async function matchSemantic(
+	query: string,
+	candidates: SemanticCandidate[],
+	embed: (texts: string[]) => Promise<number[][]>,
+): Promise<SemanticMatch | null> {
+	if (!candidates.length || !query.trim()) return null;
+	const qv = (await embed([query]))[0];
+	if (!qv) return null;
+	let best = { plugin: "", question: "", score: -2 };
+	const bestPerPlugin = new Map<string, number>();
+	for (const c of candidates) {
+		let s = -2;
+		for (const v of c.vectors) {
+			const d = cosine(qv, v);
+			if (d > s) s = d;
+		}
+		const prev = bestPerPlugin.get(c.plugin);
+		bestPerPlugin.set(c.plugin, prev === undefined ? s : Math.max(prev, s));
+		if (s > best.score) best = { plugin: c.plugin, question: c.question, score: s };
+	}
+	let other = -2;
+	for (const [p, s] of bestPerPlugin) if (p !== best.plugin && s > other) other = s;
+	return { ...best, margin: best.score - other };
+}
+
+/** Defaults measured above; do not lower `threshold` below 0.45. */
+export const SEMANTIC_THRESHOLD = 0.5;
 
 /** Pure match over precomputed or injected embeddings (testable). */
 export async function mapSemantic(
@@ -59,6 +156,7 @@ let cached: Promise<SemanticModel> | null = null;
  */
 export function loadBiencoder(
 	modelDir?: string,
+	onnxFile = "biencoder.onnx",
 ): Promise<SemanticModel> {
 	const dir = modelDir ?? process.env.SABAKI_BIENCODER_DIR;
 	if (!dir) throw new Error("bi-encodeur: SABAKI_BIENCODER_DIR requis");
@@ -77,7 +175,7 @@ export function loadBiencoder(
 				throw new Error("bi-encodeur: tokenizer Unigram attendu");
 			}
 			const vocab: UnigramVocab = loadUnigram(tokJson);
-			const sess = await ort.InferenceSession.create(path.join(dir, "biencoder.onnx"), {
+			const sess = await ort.InferenceSession.create(path.join(dir, onnxFile), {
 				intraOpNumThreads: 2,
 			});
 			const Tensor = ort.Tensor;

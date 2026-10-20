@@ -16,6 +16,7 @@ const FALLBACK_VERSIONS: Record<string, string> = {
 	minilaya: "v0.2.0",
 	generalist: "v1.0.0",
 	"generalist-multi": "v1.1.0-multi-beta",
+	biencoder: "biencoder-v1.0.0",
 	mail: "v0.5.0",
 	doom: "v0.3.0",
 };
@@ -120,6 +121,60 @@ export async function ensureGeneralist(version?: string, family = "generalist"):
 	}
 	return dir;
 }
+/**
+ * Prépare le bi-encodeur multilingue (`biencoder_<variant>.onnx` +
+ * `tokenizer/tokenizer.json`), prêt pour {@link loadBiencoder}.
+ *
+ * Un seul candidat par question : la décision est un seuil, donc l'int8
+ * (119 Mo, mesuré sans perte de qualité) est le défaut ; le fp32 (471 Mo)
+ * reste disponible pour comparer.
+ *
+ * @param {"int8" | "fp32"} variant - Quantifié (défaut) ou pleine précision.
+ * @param {string} version - Tag de release (défaut `"biencoder-v1.0.0"`).
+ * @returns {Promise<string>} Le répertoire (`biencoder_*.onnx` + `tokenizer/`).
+ * @throws {Error} Sur échec réseau ou SHA256 invalide.
+ * @example
+ * ```ts
+ * const dir = await ensureBiencoder();
+ * const sem = await loadBiencoder(dir, "biencoder_int8.onnx");
+ * ```
+ */
+export async function ensureBiencoder(
+	variant: "int8" | "fp32" = "int8",
+	version?: string,
+): Promise<string> {
+	version = await resolveVersion("biencoder", version);
+	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
+	const dir = path.join(CACHE, version, `biencoder-${variant}`);
+	fs.mkdirSync(path.join(dir, "tokenizer"), { recursive: true });
+	const sums: Record<string, string> = {};
+	const sumsCached = path.join(CACHE, version, "SHA256SUMS_BIENCODER");
+	if (!fs.existsSync(sumsCached)) {
+		await fetchFile(`${releaseBase}/SHA256SUMS_BIENCODER`, sumsCached);
+	}
+	for (const line of fs.readFileSync(sumsCached, "utf8").split("\n")) {
+		const m = line.match(/^([0-9a-f]{64})\s+(.+)$/);
+		if (m) sums[m[2]!] = m[1]!;
+	}
+	const model = `biencoder_${variant}.onnx`;
+	const files: Array<[string, string]> = [
+		[model, path.join(dir, model)],
+		["tokenizer.json", path.join(dir, "tokenizer", "tokenizer.json")],
+	];
+	for (const [asset, dest] of files) {
+		const sum = sums[asset];
+		const ok = fs.existsSync(dest) && sum && (await sha256(dest)) === sum;
+		if (!ok) {
+			await fetchFile(`${releaseBase}/${asset}`, dest);
+			if (sum && (await sha256(dest)) !== sum) {
+				fs.unlinkSync(dest);
+				throw new Error(`Invalid SHA256 for ${asset}`);
+			}
+		}
+	}
+	return dir;
+}
+
 export async function ensureMiniModel(
 	workflow: string,
 	version?: string,

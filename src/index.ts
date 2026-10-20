@@ -181,8 +181,19 @@ import { serveHttp as _serveHttp, type ServeOptions, type Served } from "./serve
 import { detectLanguage as _detectLanguage } from "./langid.js";
 export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export { detectLanguage, detectScriptLang, LANGID_LANGS } from "./langid.js";
-export { loadBiencoder, mapSemantic, describeQuestion, cosine } from "./semantic.js";
-export type { SemanticModel } from "./semantic.js";
+export {
+	loadBiencoder,
+	mapSemantic,
+	describeQuestion,
+	questionVariants,
+	buildCandidates,
+	matchSemantic,
+	cosine,
+	SEMANTIC_THRESHOLD,
+} from "./semantic.js";
+export type { SemanticModel, SemanticCandidate, SemanticMatch } from "./semantic.js";
+export { semanticMatch, semanticEnabled } from "./semantic-router.js";
+export { ensureBiencoder } from "./download.js";
 export type { LangDetect } from "./langid.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
@@ -241,6 +252,16 @@ export class Sabaki {
 		);
 		if (plugin.manifest.languages?.length) this.hasLangPlugins = true;
 		return this;
+	}
+
+	/**
+	 * Registered plugins, in registration order (read-only copy).
+	 * Used by the semantic layer to rank questions across plugins.
+	 *
+	 * @returns {SabakiPlugin[]} The registered plugins.
+	 */
+	list(): SabakiPlugin[] {
+		return [...this.plugins];
 	}
 
 	/**

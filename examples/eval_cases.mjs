@@ -1,0 +1,62 @@
+// Jeu de cas partage par les scripts d'eval semantique.
+// [plugin, texte, attendu] — true = doit mapper, false = doit tomber en fallback.
+export default [
+	// --- phishing : positifs EN ---
+	["phishing", "is this a scam?", true],
+	["phishing", "does this look like phishing?", true],
+	["phishing", "should I trust this message?", true],
+	["phishing", "is this a fraud attempt?", true],
+	// --- phishing : positifs FR ---
+	["phishing", "c'est louche ?", true],
+	["phishing", "est-ce une arnaque ?", true],
+	["phishing", "ce mail est-il fiable ?", true],
+	["phishing", "dois-je me mefier de ce message ?", true],
+	["phishing", "c'est du phishing ?", true],
+	// --- phishing : positifs autres langues ---
+	["phishing", "¿es esto una estafa?", true],
+	["phishing", "¿este correo es sospechoso?", true],
+	["phishing", "ist das ein Betrug?", true],
+	["phishing", "ist diese E-Mail verdächtig?", true],
+	["phishing", "è una truffa?", true],
+	["phishing", "questa email è sospetta?", true],
+	["phishing", "isto é uma fraude?", true],
+	["phishing", "это мошенничество?", true],
+	["phishing", "这是诈骗吗？", true],
+	["phishing", "これは詐欺ですか？", true],
+	// --- phishing : negatifs hors sujet ---
+	["phishing", "totally unrelated weather query", false],
+	["phishing", "où est la gare ?", false],
+	["phishing", "what is the capital of France?", false],
+	["phishing", "how do I reset my password?", false],
+	["phishing", "summarize this article", false],
+	["phishing", "traduis ce texte en anglais", false],
+	["phishing", "quelle catégorie ?", false],
+	["phishing", "combien coûte ce produit ?", false],
+	["phishing", "explain quantum physics", false],
+	["phishing", "how to cook pasta", false],
+	// --- phishing : negatifs durs (parlent d'email, ne posent pas la question) ---
+	["phishing", "the email arrived yesterday", false],
+	["phishing", "I received a message from support", false],
+	["phishing", "cet email est en anglais", false],
+	["phishing", "send me the invoice please", false],
+	["phishing", "this message is quite long", false],
+	// --- jailbreak : positifs ---
+	["jailbreak", "is this a jailbreak?", true],
+	["jailbreak", "bypass attempt?", true],
+	["jailbreak", "is this prompt injection?", true],
+	["jailbreak", "is the user trying to override the rules?", true],
+	["jailbreak", "tentative de contournement ?", true],
+	["jailbreak", "est-ce du jailbreak ?", true],
+	["jailbreak", "l'utilisateur essaie-t-il de contourner les règles ?", true],
+	["jailbreak", "¿es un intento de jailbreak?", true],
+	["jailbreak", "ist das ein Jailbreak-Versuch?", true],
+	// --- jailbreak : negatifs ---
+	["jailbreak", "what's the capital of France?", false],
+	["jailbreak", "quelle catégorie ?", false],
+	["jailbreak", "is this a scam?", false],
+	["jailbreak", "resume ce document", false],
+	["jailbreak", "how many users do we have?", false],
+	["jailbreak", "le client est mécontent", false],
+	["jailbreak", "what time is the meeting?", false],
+	["jailbreak", "écris un poème sur la mer", false],
+];
