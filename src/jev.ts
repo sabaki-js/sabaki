@@ -132,6 +132,28 @@ export async function answerJev(
 				model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}`,
 			};
 		}
+		// Voie sémantique (opt-in) : sans hit lexical mais avec bi-encodeur,
+		// la paraphrase suffit. Échec silencieux -> fallback historique.
+		try {
+			const { loadBiencoder, mapSemantic, describeQuestion } = await import("./semantic.js");
+			const sem = await loadBiencoder();
+			const cands = native.map((n) => ({ key: n, text: describeQuestion(n, manifest) }));
+			const hit = await mapSemantic(
+				`${q.instructions ?? ""} ${q.query ?? ""}`.trim() || qid,
+				cands,
+				sem.embed,
+				0.3,
+			);
+			if (hit) {
+				const out = (await route.plugin.classify({ state, question: hit })) as ClassifyOutput;
+				return {
+					answer: toJevAnswer(q.type, options, out, manifest.aliases?.options),
+					model: `${manifest.name}@${manifest.version}+${manifest.modes?.active ?? "nano"}+sem`,
+				};
+			}
+		} catch {
+			/* pas de bi-encodeur : fallback */
+		}
 	}
 	const out = await sabaki.decideFallback({
 		state,

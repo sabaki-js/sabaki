@@ -181,6 +181,8 @@ import { serveHttp as _serveHttp, type ServeOptions, type Served } from "./serve
 import { detectLanguage as _detectLanguage } from "./langid.js";
 export { answerJev, criteriaOptions, toJevAnswer, validateJevQuestion } from "./jev.js";
 export { detectLanguage, detectScriptLang, LANGID_LANGS } from "./langid.js";
+export { loadBiencoder, mapSemantic, describeQuestion, cosine } from "./semantic.js";
+export type { SemanticModel } from "./semantic.js";
 export type { LangDetect } from "./langid.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
