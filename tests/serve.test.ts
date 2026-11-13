@@ -6,26 +6,57 @@ import {
 	validateJevQuestion,
 	type SabakiPlugin,
 } from "../src/index.js";
-import { defineGeneralist } from "../../plugins/plugin-generalist/dist/index.js";
-import { ensureGeneralist } from "../src/index.js";
+import {
+	Sabaki,
+	answerJev,
+	definePlugin,
+	loadGeneralist,
+	miniClassifier,
+	validateJevQuestion,
+	type PluginManifest,
+} from "../src/index.js";
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+// Poids generalist : ./models local (offline, cf. tests/e2e.test.ts).
 const MODEL_DIR =
-	process.env.SABAKI_GENERALIST_DIR ?? (await ensureGeneralist());
+	process.env.SABAKI_GENERALIST_DIR ?? path.join(HERE, "..", "models", "generalist");
 
-import csManifest from "../../plugins/plugin-customer-service/dist/manifest.json" with { type: "json" };
-import invManifest from "../../plugins/plugin-invoice-processing/dist/manifest.json" with { type: "json" };
-import siManifest from "../../plugins/plugin-security-incidents/dist/manifest.json" with { type: "json" };
-import atManifest from "../../plugins/plugin-agent-trace-observability/dist/manifest.json" with { type: "json" };
-import type { PluginManifest } from "../src/index.js";
+const backend = loadGeneralist(MODEL_DIR);
+const defineGeneralist = (_dir: string) =>
+	definePlugin({
+		manifest: {
+			name: "sabaki-generalist-e2e",
+			domain: "generalist",
+			version: "0.0.0",
+			questions: ["decision"],
+			keywords: [],
+		},
+		classify: (input) => backend.decide(input),
+	});
 
-const MANIFESTS = [csManifest, invManifest, siManifest, atManifest] as PluginManifest[];
+const PKGS = [
+	"customer-service",
+	"invoice-processing",
+	"security-incidents",
+	"agent-trace-observability",
+] as const;
+const MANIFESTS: PluginManifest[] = [];
+for (const pkg of PKGS) {
+	const mod = (await import(`@sabaki-js/${pkg}`)) as unknown as {
+		default?: { manifest: PluginManifest; modelDir?: string };
+		manifest?: PluginManifest;
+		modelDir?: string;
+	};
+	const plug = mod.default ?? (mod as { manifest: PluginManifest; modelDir?: string });
+	MANIFESTS.push({ ...(plug.manifest as PluginManifest), modes: { modelDir: plug.modelDir ?? (mod as { modelDir?: string }).modelDir } } as PluginManifest);
+}
 
 const s = new Sabaki();
 for (const m of MANIFESTS) {
-	s.register(await miniClassifier(m, m.domain));
+	const modelDir = (m.modes as unknown as { modelDir?: string } | undefined)?.modelDir;
+	s.register(await miniClassifier(m, m.domain, { modelDir }));
 }
 s.setFallback(defineGeneralist(MODEL_DIR));
 console.log("4 minis + fallback chargés");

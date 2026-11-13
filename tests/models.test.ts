@@ -1,12 +1,15 @@
 import { strict as assert } from "node:assert";
 import { Sabaki, answerJev, type SabakiPlugin } from "../src/index.js";
-import mailPkg from "../../plugins/plugin-mail/dist/index.js";
-import csPkg from "../../plugins/plugin-customer-service/dist/index.js";
-import invPkg from "../../plugins/plugin-invoice-processing/dist/index.js";
+async function loadPkg(pkg: string): Promise<SabakiPlugin> {
+	const mod = (await import(`@sabaki-js/${pkg}`)) as unknown as {
+		default?: SabakiPlugin;
+	};
+	return mod.default ?? (mod as unknown as SabakiPlugin);
+}
 
-const mail = (mailPkg as { default?: SabakiPlugin }).default ?? (mailPkg as SabakiPlugin);
-const cs = (csPkg as { default?: SabakiPlugin }).default ?? (csPkg as SabakiPlugin);
-const inv = (invPkg as { default?: SabakiPlugin }).default ?? (invPkg as SabakiPlugin);
+const mail = await loadPkg("mail");
+const cs = await loadPkg("customer-service");
+const inv = await loadPkg("invoice-processing");
 
 let fallbackCount = 0;
 const fallback: SabakiPlugin = {
