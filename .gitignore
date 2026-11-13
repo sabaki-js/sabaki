@@ -25,6 +25,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+.vercel
 
 # local model weights (downloaded at runtime, see src/download.ts)
 models/

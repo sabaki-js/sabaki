@@ -1,0 +1,11 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"outputDirectory": "site/dist",
+	"functions": {
+		"api/systemone.mjs": {
+			"memory": 2048,
+			"maxDuration": 60,
+			"excludeFiles": "node_modules/onnxruntime-node/bin/napi-v6/{darwin/**,win32/**,linux/arm64/**}"
+		}
+	}
+}
