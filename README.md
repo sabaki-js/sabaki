@@ -67,6 +67,9 @@ SABAKI_GENERALIST_DIR=~/.cache/sabaki/v0.6.0/generalist \
 # add "mode": "auto|nano|mini" per request to force inference (default auto)
 ```
 
+Local dev (from a clone): `npm run deploy -- 8000` (builds `dist/` then serves;
+`npm run serve -- 8000` skips the build). Bun works too: `bun run deploy -- 8000`.
+
 ```sh
 curl -X POST localhost:8000/v1/systemone -H 'content-type: application/json' -d '{
   "model": "sabaki-generalist-v1",
