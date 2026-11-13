@@ -31,6 +31,7 @@
     "lint:write": "bunx --bun @biomejs/biome lint --write ./src",
     "test": "bun test ./tests",
     "build": "tsc --project tsconfig.json && cp src/default-keywords.json src/langid-weights.json dist/",
+    "vercel-build": "npm run build",
     "serve": "node examples/serve.mjs",
     "deploy": "npm run build && node examples/serve.mjs",
     "deploy:npm": "npm publish --access public",
