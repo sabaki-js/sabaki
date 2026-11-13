@@ -14,25 +14,28 @@ const { Sabaki, miniClassifier, answerJev, validateJevQuestion } = sabaki;
 // --- Router (construit une fois par isolate, réutilisé entre invocations) ---
 let ready = null;
 
+// Imports statiques : le traceur Vercel ne suit pas les import() dynamiques
+// avec template literal -> les paquets @sabaki-js/* seraient exclus du bundle.
+import csPkg from "@sabaki-js/customer-service";
+import invPkg from "@sabaki-js/invoice-processing";
+import siPkg from "@sabaki-js/security-incidents";
+import atPkg from "@sabaki-js/agent-trace-observability";
+import mailPkg from "@sabaki-js/mail";
+
+const BUNDLED = [csPkg, invPkg, siPkg, atPkg, mailPkg];
+
 async function buildRouter() {
 	const s = new Sabaki();
 	const sNano = new Sabaki();
 
 	// 4 workflows historiques + mail (poids embarqués).
-	const PKGS = [
-		"@sabaki-js/customer-service",
-		"@sabaki-js/invoice-processing",
-		"@sabaki-js/security-incidents",
-		"@sabaki-js/agent-trace-observability",
-		"@sabaki-js/mail",
-	];
-	for (const pkg of PKGS) {
+	for (const raw of BUNDLED) {
 		try {
-			const mod = await import(pkg);
-			const plug = mod.default ?? mod;
+			const plug = raw.default ?? raw;
+			const modelDir = raw.modelDir ?? plug.modelDir;
 			sNano.register(plug);
 			try {
-				s.register(await miniClassifier(plug.manifest, plug.manifest.domain, { modelDir: mod.modelDir }));
+				s.register(await miniClassifier(plug.manifest, plug.manifest.domain, { modelDir }));
 			} catch {
 				s.register(plug); // repli nano (ex: onnxruntime absent)
 			}
