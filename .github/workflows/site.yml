@@ -31,7 +31,7 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - run: npm run build -- --site-url https://sabaki-js.github.io/sabaki --api-url https://sabaki-pi.vercel.app/api/systemone
+      - run: npm run build -- --site-url https://sabaki.fox3000foxy.com --api-url https://sabaki-pi.vercel.app/api/systemone
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site/dist
