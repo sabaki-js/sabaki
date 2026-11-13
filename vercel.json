@@ -1,5 +1,6 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"outputDirectory": "site/dist",
 	"functions": {
 		"api/systemone.mjs": {
 			"memory": 2048,
