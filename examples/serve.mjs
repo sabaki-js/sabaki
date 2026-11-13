@@ -23,10 +23,16 @@ const WF = [
 ];
 const plugins = {};
 for (const wf of WF) {
+	// Nom du paquet npm : les workflows historiques utilisent le nom court
+	// (@sabaki-js/<domaine-avec-tirets>), les nouveaux le nom complet
+	// (@sabaki-js/<workflow-avec-underscores> si present sur npm).
 	const domain = wf.replace(/_/g, "-");
 	const short = domain.replace(/-observability$/, "");
+	const cands = [`@sabaki-js/${domain}`, `@sabaki-js/${short}`, `@sabaki-js/plugin-${domain}`, `@sabaki-js/${wf}`];
+	// `mail` est publie sous @sabaki-js/mail (nom complet aussi).
+	if (wf === "mail") cands.unshift("@sabaki-js/mail");
 	let mod = null;
-	for (const cand of [`@sabaki-js/${domain}`, `@sabaki-js/plugin-${domain}`, `@sabaki-js/${short}`]) {
+	for (const cand of [...new Set(cands)]) {
 		try {
 			mod = await import(cand);
 			break;
@@ -35,7 +41,7 @@ for (const wf of WF) {
 		}
 	}
 	if (mod) plugins[wf] = { plugin: mod.default ?? mod, modelDir: mod.modelDir };
-	else console.log(`plugin manquant: ${domain} (repli routage seul)`);
+	else console.log(`plugin manquant: ${domain.replace(/-observability$/, "")} (repli routage seul)`);
 }
 
 const s = new Sabaki();
@@ -55,6 +61,24 @@ for (const [tag, rel] of [
 		console.log(`plugin sécurité: ${tag} (${plug.manifest?.domain})`);
 	} catch {
 		console.log(`plugin sécurité manquant: ${tag} (repli routage seul)`);
+	}
+}
+// Workflows correspondant a des paquets npm optionnels (hors les 4
+// historiques ci-dessus) : enregistres avec leurs poids embarques.
+for (const pkg of ["@sabaki-js/mail", "@sabaki-js/doom"]) {
+	try {
+		const mod = await import(pkg);
+		const plug = mod.default ?? mod;
+		sNano.register(plug);
+		try {
+			s.register(await miniClassifier(plug.manifest, plug.manifest.domain, { modelDir: mod.modelDir }));
+			console.log(`spécialiste mini: ${plug.manifest.domain}${mod.modelDir ? "" : " (nano)"}`);
+		} catch {
+			s.register(plug);
+			console.log(`spécialiste nano: ${plug.manifest.domain}`);
+		}
+	} catch {
+		console.log(`plugin manquant: ${pkg} (repli routage seul)`);
 	}
 }
 for (const { plugin: plug, modelDir: bundled } of Object.values(plugins)) {

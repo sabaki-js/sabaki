@@ -80,5 +80,8 @@
   },
   "bin": {
     "bunkitsu": "bin/bunkitsu.mjs"
+  },
+  "allowScripts": {
+    "onnxruntime-node": true
   }
 }
