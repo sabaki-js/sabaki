@@ -6,6 +6,11 @@ import path from "node:path";
 import os from "node:os";
 import { createRequire } from "node:module";
 
+// Le cache (versions.json + SHA) doit vivre sous /tmp : le home est en
+// lecture seule sur Vercel. Posé AVANT l'import de dist/ car src/download.ts
+// fige CACHE au chargement du module.
+if (!process.env.SABAKI_CACHE_DIR) process.env.SABAKI_CACHE_DIR = os.tmpdir();
+
 const require = createRequire(import.meta.url);
 // dist/ est buildé par `vercel-build` (voir package.json).
 const sabaki = await import("../dist/index.js");
@@ -77,9 +82,7 @@ async function buildRouter() {
 
 	// Fallback generalist : /tmp persistant (warm) > env > download.
 	// Pas de generalist-multi sur Vercel (482 Mo) : mini latin seul.
-	// Le cache (versions.json + SHA) doit vivre sous /tmp : le home est en
-	// lecture seule sur Vercel (SABAKI_CACHE_DIR, cf. src/download.ts).
-	if (!process.env.SABAKI_CACHE_DIR) process.env.SABAKI_CACHE_DIR = os.tmpdir();
+	// (SABAKI_CACHE_DIR=/tmp est posé en tête de module, avant l'import dist/.)
 	let generalistDir = process.env.SABAKI_GENERALIST_DIR;
 	let generalistModel = "sabaki-generalist";
 	if (!generalistDir && !process.env.SABAKI_OFFLINE) {
