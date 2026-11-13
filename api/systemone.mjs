@@ -28,26 +28,10 @@ import * as atMod from "@sabaki-js/agent-trace-observability";
 import * as mailMod from "@sabaki-js/mail";
 
 const BUNDLED = [csMod, invMod, siMod, atMod, mailMod];
-// Nom du workflow = nom du dossier de poids (le manifest.domain peut différer,
-// ex: plugin mail historique). Tiré du modelDir embarqué, pas du manifest.
-function workflowOf(raw, plug) {
-	const md = raw.modelDir ?? plug.modelDir ?? "";
-	const m = md.match(/([^/]+)-int8\/?$/);
-	return m?.[1] ?? plug.manifest.domain;
-}
 
 async function buildRouter() {
 	const s = new Sabaki();
 	const sNano = new Sabaki();
-	const diag = { minis: {}, generalist: "none" };
-
-	// Diagnostic pre-onnx : le .node natif charge-t-il dans cet env ?
-	try {
-		const ort = await import("onnxruntime-node").then((m) => m.default ?? m);
-		diag.ort = "ok";
-	} catch (e) {
-		diag.ort = `FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
-	}
 
 	// 4 workflows historiques + mail (poids embarqués).
 	for (const raw of BUNDLED) {
@@ -56,7 +40,6 @@ async function buildRouter() {
 			const modelDir = raw.modelDir ?? plug.modelDir;
 			sNano.register(plug);
 			try {
-				const wf = workflowOf(raw, plug);
 				// modelDir embarqué = dossier complet : loadMini direct,
 				// sans repasser par ensureMiniModel (qui retéléchargerait).
 				const { loadMini } = sabaki;
@@ -70,13 +53,12 @@ async function buildRouter() {
 						return { decision: r.decision, confidence: r.confidence, domain: plug.manifest.domain };
 					},
 				}));
-				diag.minis[plug.manifest.domain] = `mini (${wf})`;
 			} catch (e) {
 				s.register(plug); // repli nano (ex: onnxruntime absent)
-				diag.minis[plug.manifest.domain] = `nano (${String(e?.message ?? e).slice(0, 160)})`;
+				console.warn(`[sabaki] mini ${plug.manifest.domain} -> nano (${String(e?.message ?? e).slice(0, 160)})`);
 			}
 		} catch (e) {
-			diag.minis["?"] = `skip (${String(e?.message ?? e).slice(0, 120)})`;
+			console.warn(`[sabaki] plugin skip (${String(e?.message ?? e).slice(0, 120)})`);
 		}
 	}
 
@@ -98,13 +80,12 @@ async function buildRouter() {
 			}
 			const dir = path.join(base, "generalist");
 			generalistDir = await sabaki.ensureGeneralist(undefined, "generalist", { dir });
-			diag.generalist = `downloaded: ${generalistDir}`;
 		} catch (e) {
 			generalistDir = undefined; // offline ou réseau HS : pas de fallback
-			diag.generalist = `download FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
+			console.warn(`[sabaki] generalist download FAIL (${String(e?.message ?? e).slice(0, 200)})`);
 		}
 	} else if (generalistDir) {
-		diag.generalist = `env: ${generalistDir}`;
+		console.log(`[sabaki] generalist from env ${generalistDir}`);
 	}
 	if (generalistDir) {
 		try {
@@ -122,13 +103,13 @@ async function buildRouter() {
 			});
 			s.setFallback(fb);
 			sNano.setFallback(fb);
-			diag.generalist += " + loaded";
+			console.log(`[sabaki] generalist fallback ready (${generalistModel})`);
 		} catch (e) {
-			diag.generalist += ` / load FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
+			console.warn(`[sabaki] generalist load FAIL (${String(e?.message ?? e).slice(0, 200)})`);
 		}
 	}
-	console.log(`[sabaki] router ready ${JSON.stringify(diag).slice(0, 2000)}`);
-	return { s, sNano, generalistModel, diag };
+	console.log("[sabaki] router ready");
+	return { s, sNano, generalistModel };
 }
 
 function getRouter() {
@@ -146,16 +127,6 @@ export default async function handler(req, res) {
 		return;
 	}
 	if (req.method === "GET") {
-		// ?debug=1 : état du router (minis chargés ? generalist ? ort ?) — pas de secret.
-		// ?diag=1 (POST aussi) : idem dans la réponse.
-		try {
-			const u = new URL(req.url ?? "/", "http://x");
-			if (u.searchParams.get("debug") === "1") {
-				const r = await getRouter();
-				res.status(200).json({ status: "ok", diag: r.diag, generalistModel: r.generalistModel });
-				return;
-			}
-		} catch { /* ignore, health ci-dessous */ }
 		res.status(200).json({ status: "ok" });
 		return;
 	}
@@ -183,7 +154,7 @@ export default async function handler(req, res) {
 			res.status(422).json({ error: "mode: auto|nano|mini" });
 			return;
 		}
-		const { s, sNano, generalistModel, diag } = await getRouter();
+		const { s, sNano, generalistModel } = await getRouter();
 		const router = mode === "nano" ? sNano : s;
 		const answers = {};
 		const models = new Set();
@@ -206,7 +177,6 @@ export default async function handler(req, res) {
 			model: models.size === 1 ? [...models][0] : `sabaki-routed(${[...models].join(",")})`,
 			answers,
 			usage: { input_tokens: st.length >> 2, output_tokens: 0, latency_ms: Date.now() - t0 },
-			diag,
 		});
 	} catch (e) {
 		res.status(400).json({ error: String(e?.message ?? e) });
