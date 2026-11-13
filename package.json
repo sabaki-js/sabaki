@@ -1,6 +1,6 @@
 {
   "name": "sabaki",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "license": "MIT",
   "description": "Sabaki — routeur léger vers des plugins de décision typée (zéro dépendance runtime).",
   "main": "dist/index.js",
