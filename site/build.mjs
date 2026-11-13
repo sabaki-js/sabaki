@@ -9,6 +9,8 @@ const ROOT = import.meta.dirname;
 const DIST = path.join(ROOT, "dist");
 const argIdx = process.argv.indexOf("--site-url");
 const siteUrl = (argIdx > 0 ? process.argv[argIdx + 1] : process.env.SITE_URL ?? "https://sabaki.example.com").replace(/\/$/, "");
+const apiIdx = process.argv.indexOf("--api-url");
+const apiUrl = (apiIdx > 0 ? process.argv[apiIdx + 1] : process.env.API_URL ?? `${siteUrl}/api/systemone`).replace(/\/$/, "");
 
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(DIST, { recursive: true });
@@ -27,7 +29,7 @@ const version = hash.digest("hex").slice(0, 8);
 // Demo data for the static first render
 const router = JSON.parse(fs.readFileSync(path.join(ROOT, "public/demo/router.json"), "utf8"));
 const weights = Object.fromEntries(router.map((p) => [p.domain, JSON.parse(fs.readFileSync(path.join(ROOT, "public", p.weights), "utf8"))]));
-const ctx = { siteUrl, version, router, weights };
+const ctx = { siteUrl, apiUrl, version, router, weights };
 
 fs.writeFileSync(path.join(DIST, "index.html"), renderPage("en", ctx));
 fs.mkdirSync(path.join(DIST, "fr"), { recursive: true });
@@ -90,4 +92,4 @@ fs.writeFileSync(
 // Hosting helpers (Netlify / Cloudflare Pages style): long cache for hashed-by-query assets.
 fs.writeFileSync(path.join(DIST, "_headers"), `/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/demo/*\n  Cache-Control: public, max-age=86400\n/\n  Cache-Control: public, max-age=0, must-revalidate\n/fr/\n  Cache-Control: public, max-age=0, must-revalidate\n`);
 fs.writeFileSync(path.join(DIST, ".nojekyll"), "");
-console.log(`built → dist/  (site url ${siteUrl}, assets v${version})`);
+console.log(`built → dist/  (site url ${siteUrl}, api ${apiUrl}, assets v${version})`);

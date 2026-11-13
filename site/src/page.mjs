@@ -39,6 +39,9 @@ export function renderPage(lang, ctx) {
   const asset = (p) => `/assets/${p}`;
   const v = ctx.version;
   const n = (s) => (lang === "fr" ? String(s).replace(/(\d)\.(\d)/g, "$1,$2") : String(s));
+  // API publique (console hébergée + snippet curl) : SABAKI_API_URL au build,
+  // défaut = même origine (routing Cloudflare /api -> Vercel, zéro crédit sinon).
+  const apiUrl = (ctx.apiUrl ?? `${siteUrl}/api/systemone`).replace(/\/$/, "");
   const S = { ...t.console };
   const consoleStrings = Object.fromEntries(Object.entries(S).filter(([, val]) => typeof val === "string"));
 
@@ -238,7 +241,7 @@ const ping = definePlugin({
     fallback: `<p class="tab-intro">${t.quick.intro.fallback}</p>${code("ts", fallbackSnippet)}`,
     http: `<p class="tab-intro">${t.quick.intro.http}</p>${code("bash", httpSnippetA)}${code("bash", httpSnippetB)}${code("json", httpSnippetC, t.quick.result)}`,
     hosted: `<p class="tab-intro">${t.quick.intro.hosted}</p>
-      <form class="hosted-form" data-hosted-form>
+      <form class="hosted-form" data-hosted-form data-api="${esc(apiUrl)}">
         <label class="field-label" for="hosted-state">${esc(t.quick.hostedPh)}</label>
         <textarea id="hosted-state" class="field" rows="3" spellcheck="false">I want a pizza with extra cheese</textarea>
         <label class="field-label" for="hosted-options">${esc(t.quick.hostedOpts)}</label>
@@ -247,7 +250,7 @@ const ping = definePlugin({
         <div class="hosted-out" id="hosted-out" aria-live="polite"></div>
       </form>
       <p class="tab-intro">${esc(t.quick.hostedApi)}</p>
-      ${code("bash", `curl -s https://sabaki.fox3000foxy.com/v1/systemone -H 'content-type: application/json' -d '{"state":"I want a pizza","questions":{"q":{"type":"choice","instructions":"Pick one.","options":["order food","taxes"]}}}'`, "curl")}`,
+      ${code("bash", `curl -s ${apiUrl} -H 'content-type: application/json' -d '{"state":"I want a pizza","questions":{"q":{"type":"choice","instructions":"Pick one.","options":["order food","taxes"]}}}'`, "curl")}`,
   };
   const tabs = t.quick.tabs
     .map(
