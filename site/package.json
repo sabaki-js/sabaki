@@ -1,0 +1,19 @@
+{
+  "name": "sabaki-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing page for the sabaki npm library (static, zero runtime dependencies).",
+  "type": "module",
+  "scripts": {
+    "assets": "node scripts/make-assets.mjs",
+    "demo-data": "node scripts/make-demo-data.mjs",
+    "build": "node build.mjs",
+    "dev": "node build.mjs && node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "build:live": "node build.mjs --site-url https://sabaki.fox3000foxy.com"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "sharp": "^0.34.0"
+  }
+}

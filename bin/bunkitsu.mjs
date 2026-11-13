@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const sabaki = await import(HERE + "/../dist/index.js");
-const { Sabaki, loadGeneralist, definePlugin } = sabaki;
+const { Sabaki, ensureGeneralist, loadGeneralist, definePlugin } = sabaki;
 
 function parseArgs(argv) {
 	const o = { cmd: null, out: null, plugins: [], generalistDir: null, multiDir: null, jobs: 4 };
@@ -81,8 +81,8 @@ async function loadPlugin(spec, cwd) {
 
 const LATIN = new Set(["de", "en", "es", "fr", "id", "it", "pt", "tr", "vi"]);
 const USAGE = `bunkitsu resolve input.csv --out results.csv [--plugin <path|pkg>]... [--jobs 4]
-  --generalist-dir <dir>   fallback mini (defaut: SABAKI_GENERALIST_DIR)
-  --multi-dir <dir>        fallback multilingue non-latin (defaut: SABAKI_MULTI_DIR)
+  --generalist-dir <dir>   fallback mini (defaut: SABAKI_GENERALIST_DIR, sinon ./models/generalist)
+  --multi-dir <dir>        fallback multilingue non-latin (defaut: SABAKI_MULTI_DIR, sinon ./models/generalist-multi)
 Colonnes entree: state, question, type, options (options separees par |).
 Sortie: + decision, confidence, probs (JSON), domain, model.`;
 const o = parseArgs(process.argv.slice(2));
@@ -98,8 +98,45 @@ for (const spec of o.plugins) {
 	}
 }
 // Fallback généraliste dispatché par langue (comme serve.mjs).
-const miniDir = o.generalistDir ?? process.env.SABAKI_GENERALIST_DIR;
-const multiDir = o.multiDir ?? process.env.SABAKI_MULTI_DIR;
+// Explicite > env > ./models local, sinon telechargement dans ./models
+// (offline -> pas de fallback).
+const MODELS = path.join(HERE, "..", "models");
+function hasOnnx(d) {
+	try {
+		return !!d && fs.existsSync(path.join(d, "generalist.onnx"));
+	} catch {
+		return false;
+	}
+}
+async function resolveGeneralist(explicit, env, local, family) {
+	if (explicit ?? env) return explicit ?? env;
+	if (hasOnnx(local)) return local;
+	if (process.env.SABAKI_OFFLINE) return undefined;
+	console.log(`telechargement generalist ${family} -> ${local} ...`);
+	try {
+		const dir = await ensureGeneralist(undefined, family, {
+			dir: local,
+			onDownload: (f, d) => console.log(`  + ${f} -> ${d}`),
+		});
+		console.log(`generalist ${family} pret (${dir})`);
+		return dir;
+	} catch (e) {
+		console.log(`generalist ${family} indisponible (${e.message}) - pas de fallback`);
+		return undefined;
+	}
+}
+const miniDir = await resolveGeneralist(
+	o.generalistDir,
+	process.env.SABAKI_GENERALIST_DIR,
+	path.join(MODELS, "generalist"),
+	"generalist",
+);
+const multiDir = await resolveGeneralist(
+	o.multiDir,
+	process.env.SABAKI_MULTI_DIR,
+	path.join(MODELS, "generalist-multi"),
+	"generalist-multi",
+);
 if (miniDir || multiDir) {
 	const miniBe = miniDir ? loadGeneralist(miniDir) : null;
 	const multiBe = multiDir ? loadGeneralist(multiDir) : null;

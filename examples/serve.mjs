@@ -40,6 +40,7 @@ for (const wf of WF) {
 
 const s = new Sabaki();
 const sNano = new Sabaki();
+const MODELS = path.join(HERE, "..", "models");
 // Plugins sécurité (cross-encoders, poids bundlés) : liens relatifs
 // tant que @sabaki-js/phishing-detection n'est pas sur npm.
 for (const [tag, rel] of [
@@ -58,27 +59,72 @@ for (const [tag, rel] of [
 }
 for (const { plugin: plug, modelDir: bundled } of Object.values(plugins)) {
 	// Variante mini si le workflow existe en ONNX, sinon nano tel quel.
-	// Poids embarques du plugin en priorite (aucun telechargement), sinon HF.
+	// Poids embarques du plugin en priorite, sinon ./models local, sinon
+	// telechargement HF (SHA-verifie) dans ./models (offline -> nano).
 	const wf = plug.manifest.domain;
 	sNano.register(plug);
+	let modelDir = bundled;
+	if (!modelDir && !process.env.SABAKI_OFFLINE) {
+		const local = path.join(MODELS, `${wf}-int8`);
+		console.log(`telechargement mini ${wf} -> ${local} ...`);
+		try {
+			modelDir = await ensureMiniModel(wf, undefined, "int8", {
+				dir: local,
+				onDownload: (f, d) => console.log(`  + ${f} -> ${d}`),
+			});
+			console.log(`mini ${wf} pret (${modelDir})`);
+		} catch (e) {
+			console.log(`mini ${wf} indisponible (${e.message}) - repli nano`);
+		}
+	}
 	try {
-		s.register(
-			await miniClassifier(plug.manifest, wf, {
-				modelDir: bundled,
-			}),
-		);
-		console.log(`spécialiste mini: ${wf}${bundled ? " (bundle)" : ""}`);
+		s.register(await miniClassifier(plug.manifest, wf, { modelDir }));
+		console.log(`spécialiste mini: ${wf}${modelDir ? "" : " (nano)"}`);
 	} catch {
 		s.register(plug);
 		console.log(`spécialiste nano: ${wf}`);
 	}
 }
-// Fallback generalist (core) : répond quand aucun spécialiste ne gagne.
-// Dir via argv[3], sinon SABAKI_GENERALIST_DIR (explicite > env, pm2-safe).
-// Routage par langue : latin -> mini (defaut prouve), non-latin -> multilingue
-// (SABAKI_MULTI_DIR). Un seul serve, label du backend effectif dans `model`.
-const GENERALIST_DIR = process.argv[3] ?? process.env.SABAKI_GENERALIST_DIR;
-const MULTI_DIR = process.env.SABAKI_MULTI_DIR;
+// Fallback generalist : explicite > env > ./models local, sinon
+// telechargement (SHA-verifie) dans ./models (offline -> pas de fallback).
+// Routage par langue : latin -> generalist, non-latin -> generalist-multi.
+function hasOnnx(d) {
+	try {
+		return !!d && fs.existsSync(path.join(d, "generalist.onnx"));
+	} catch {
+		return false;
+	}
+}
+async function resolveGeneralist(explicit, env, local, family) {
+	if (explicit ?? env) return explicit ?? env;
+	if (hasOnnx(local)) return local;
+	if (process.env.SABAKI_OFFLINE) return undefined;
+	console.log(`telechargement generalist ${family} -> ${local} ...`);
+	try {
+		const { ensureGeneralist: _ensure } = sabaki;
+		const dir = await _ensure(undefined, family, {
+			dir: local,
+			onDownload: (f, d) => console.log(`  + ${f} -> ${d}`),
+		});
+		console.log(`generalist ${family} pret (${dir})`);
+		return dir;
+	} catch (e) {
+		console.log(`generalist ${family} indisponible (${e.message}) - pas de fallback`);
+		return undefined;
+	}
+}
+const GENERALIST_DIR = await resolveGeneralist(
+	process.argv[3],
+	process.env.SABAKI_GENERALIST_DIR,
+	path.join(MODELS, "generalist"),
+	"generalist",
+);
+const MULTI_DIR = await resolveGeneralist(
+	undefined,
+	process.env.SABAKI_MULTI_DIR,
+	path.join(MODELS, "generalist-multi"),
+	"generalist-multi",
+);
 const { loadGeneralist: _loadGeneralist, definePlugin: _definePlugin } = sabaki;
 const LATIN_FALLBACK = new Set(["de", "en", "es", "fr", "id", "it", "pt", "tr", "vi"]);
 if (GENERALIST_DIR || MULTI_DIR) {
@@ -155,7 +201,7 @@ const server = http.createServer(async (req, res) => {
 	const DOCS = path.join(HERE, "..", "..", "docs", "typedoc");
 	const statics = [
 		["/docs/", DOCS],
-		["/", path.join(HERE, "..", "..", "sabaki-site-v3", "dist")],
+		["/", path.join(HERE, "..", "site", "dist")],
 	];
 	if (req.method === "GET") {
 		const url = new URL(req.url, "http://x");
