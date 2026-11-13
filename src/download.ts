@@ -54,9 +54,51 @@ function sha256(file: string): Promise<string> {
 }
 
 async function fetchFile(url: string, dest: string): Promise<void> {
+	fs.mkdirSync(path.dirname(dest), { recursive: true });
 	const res = await fetch(url, { redirect: "follow" });
 	if (!res.ok || !res.body) throw new Error(`download ${url}: ${res.status}`);
 	fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+}
+
+/** Options communes : réutilise un dossier local déjà rempli, sans réseau. */
+export interface EnsureOptions {
+	/** Dossier local cible (ex `./models/generalist`). Prioritaire sur le cache. */
+	dir?: string;
+	/** Appelé uniquement lors d'un vrai téléchargement `(fichier, destination)`. */
+	onDownload?: (file: string, dest: string) => void;
+}
+
+function hasGeneralistDir(dir: string): boolean {
+	try {
+		if (!fs.existsSync(path.join(dir, "generalist.onnx"))) return false;
+		if (fs.existsSync(path.join(dir, "tokenizer", "tokenizer.json"))) return true;
+		return fs.existsSync(path.join(dir, "tokenizer.json"));
+	} catch {
+		return false;
+	}
+}
+
+function hasMiniDir(dir: string, workflow: string, suffix: string): boolean {
+	try {
+		if (!fs.existsSync(path.join(dir, "model.json"))) return false;
+		if (!fs.existsSync(path.join(dir, `${workflow}${suffix}.onnx`))) return false;
+		return fs.existsSync(path.join(dir, "tokenizer.json"));
+	} catch {
+		return false;
+	}
+}
+
+function ensureGeneralistTokenizerCopy(dir: string): void {
+	try {
+		fs.mkdirSync(path.join(dir, "tokenizer"), { recursive: true });
+		const tokDest = path.join(dir, "tokenizer", "tokenizer.json");
+		const tokSrc = path.join(dir, "tokenizer.json");
+		if (!fs.existsSync(tokDest) && fs.existsSync(tokSrc)) {
+			fs.copyFileSync(tokSrc, tokDest);
+		}
+	} catch {
+		/* best-effort */
+	}
 }
 
 /**
@@ -86,11 +128,21 @@ async function fetchFile(url: string, dest: string): Promise<void> {
  * const backend = loadGeneralist(dir);
  * ```
  */
-export async function ensureGeneralist(version?: string, family = "generalist"): Promise<string> {
+export async function ensureGeneralist(
+	version?: string,
+	family = "generalist",
+	opts: EnsureOptions = {},
+): Promise<string> {
+	// Si les modèles sont déjà téléchargés, on évite de les retélécharger :
+	// dossier local explicite complet -> réutilisé tel quel, zéro réseau.
+	if (opts.dir && hasGeneralistDir(opts.dir)) {
+		ensureGeneralistTokenizerCopy(opts.dir);
+		return opts.dir;
+	}
 	version = await resolveVersion(family, version);
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
 	const sub = family === "generalist" ? "generalist" : family;
-	const dir = path.join(CACHE, version, sub);
+	const dir = opts.dir ?? path.join(CACHE, version, sub);
 	fs.mkdirSync(dir, { recursive: true });
 	const sums: Record<string, string> = {};
 	const sumsCached = path.join(CACHE, version, "SHA256SUMS_GENERALIST");
@@ -106,6 +158,7 @@ export async function ensureGeneralist(version?: string, family = "generalist"):
 		const sum = sums[f];
 		const ok = fs.existsSync(dest) && sum && (await sha256(dest)) === sum;
 		if (!ok) {
+			opts.onDownload?.(f, dest);
 			await fetchFile(`${releaseBase}/${encodeURIComponent(f)}`, dest);
 			if (sum && (await sha256(dest)) !== sum) {
 				fs.unlinkSync(dest);
@@ -113,23 +166,22 @@ export async function ensureGeneralist(version?: string, family = "generalist"):
 			}
 		}
 	}
-	fs.mkdirSync(path.join(dir, "tokenizer"), { recursive: true });
-	const tokDest = path.join(dir, "tokenizer", "tokenizer.json");
-	if (!fs.existsSync(tokDest)) {
-		fs.copyFileSync(path.join(dir, "tokenizer.json"), tokDest);
-	}
+	ensureGeneralistTokenizerCopy(dir);
 	return dir;
 }
 export async function ensureMiniModel(
 	workflow: string,
 	version?: string,
 	variant: "int8" | "fp32" = "int8",
+	opts: EnsureOptions = {},
 ): Promise<string> {
 	const family = workflow === "mail" ? "mail" : workflow === "doom" ? "doom" : "minilaya";
+	const suffix = variant === "int8" ? "_int8" : "";
+	// Si les modèles sont déjà téléchargés, on évite de les retélécharger.
+	if (opts.dir && hasMiniDir(opts.dir, workflow, suffix)) return opts.dir;
 	version = await resolveVersion(family, version);
 	const releaseBase = `https://github.com/sabaki-js/sabaki-models/releases/download/${version}`;
-	const suffix = variant === "int8" ? "_int8" : "";
-	const dir = path.join(CACHE, version, `${workflow}-${variant}`);
+	const dir = opts.dir ?? path.join(CACHE, version, `${workflow}-${variant}`);
 	fs.mkdirSync(dir, { recursive: true });
 	const sums: Record<string, string> = {};
 	const sumsName = variant === "int8" ? "SHA256SUMS_INT8" : "SHA256SUMS";
@@ -170,6 +222,7 @@ export async function ensureMiniModel(
 		const ok = fs.existsSync(dest) && sum && (await sha256(dest)) === sum;
 		if (!ok) {
 			try {
+				opts.onDownload?.(base, dest);
 				await fetchFile(`${releaseBase}/${encodeURIComponent(base)}`, dest);
 			} catch {
 				// Modèles mono-fichier (pas de .onnx.data externe) : optionnel.
@@ -189,6 +242,7 @@ export async function ensureMiniModel(
 		const ok =
 			fs.existsSync(dest) && (!sum || (await sha256(dest)) === sum);
 		if (!ok) {
+			opts.onDownload?.(base, dest);
 			await fetchFile(`${metaBase}/${encodeURIComponent(base)}`, dest);
 			if (sum && (await sha256(dest)) !== sum) {
 				fs.unlinkSync(dest);

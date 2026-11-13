@@ -4,7 +4,7 @@
  */
 import { predict, type ModelWeights } from "./logreg.js";
 import { loadMini } from "./mini.js";
-import { ensureMiniModel } from "./download.js";
+import { ensureMiniModel, type EnsureOptions } from "./download.js";
 import type {
 	ClassifyOutput,
 	PluginManifest,
@@ -102,6 +102,9 @@ export async function miniClassifier(
 		joinFrom?: boolean;
 		/** Dossier de poids local (ex: plugin bundle) - prioritaire sur le telechargement. */
 		modelDir?: string;
+		/** Alias de `modelDir` + callback download (cf. {@link ensureMiniModel}). */
+		dir?: string;
+		onDownload?: EnsureOptions["onDownload"];
 	} = {},
 ): Promise<
 	SabakiPlugin & {
@@ -109,7 +112,12 @@ export async function miniClassifier(
 	}
 > {
 	const primary = opts.primary ?? manifest.primary ?? manifest.questions[0]!;
-	const dir = opts.modelDir ?? (await ensureMiniModel(workflow, opts.version, opts.variant));
+	const localDir = opts.modelDir ?? opts.dir;
+	const dir =
+		localDir ??
+		(await ensureMiniModel(workflow, opts.version, opts.variant, {
+			onDownload: opts.onDownload,
+		}));
 	const mini = await loadMini(dir);
 	const classifyAsync = async (input: SabakiInput): Promise<ClassifyOutput> => {
 		const q = input.question ?? primary;
@@ -152,6 +160,8 @@ export function autoClassifier(
 		joinFrom?: boolean;
 		version?: string;
 		variant?: "int8" | "fp32";
+		dir?: string;
+		onDownload?: EnsureOptions["onDownload"];
 	} = {},
 ): SabakiPlugin & {
 	classifyAsync: (input: SabakiInput) => Promise<ClassifyOutput>;
@@ -174,6 +184,8 @@ export function autoClassifier(
 						primary,
 						version: opts.version,
 						variant: opts.variant,
+						dir: opts.dir,
+						onDownload: opts.onDownload,
 					});
 				} catch {
 					mini = null;

@@ -184,6 +184,7 @@ export { detectLanguage, detectScriptLang, LANGID_LANGS } from "./langid.js";
 export type { LangDetect } from "./langid.js";
 export type { JevAnswer, JevQuestion } from "./jev.js";
 export { ensureMiniModel, ensureGeneralist, resolveVersion } from "./download.js";
+export type { EnsureOptions } from "./download.js";
 export { definePlugin, miniClassifier, nanoClassifier, autoClassifier } from "./plugin.js";
 export type { DefinePluginOptions } from "./plugin.js";
 
