@@ -156,7 +156,10 @@ document.addEventListener("submit", async (e) => {
   out.textContent = "…";
   const t0 = performance.now();
   try {
-    const r = await fetch("https://sabaki.fox3000foxy.com/v1/systemone", {
+    // Même origine par défaut : le routing Cloudflare envoie /api/* vers Vercel.
+    // Surcouché au build via data-api sur le <form> (voir page.mjs / ctx.apiUrl).
+    const apiUrl = form.dataset.api || "/api/systemone";
+    const r = await fetch(apiUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
