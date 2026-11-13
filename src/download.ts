@@ -9,7 +9,9 @@ import path from "path";
 import crypto from "crypto";
 import os from "os";
 
-const CACHE = path.join(os.homedir(), ".cache", "sabaki");
+const CACHE = process.env.SABAKI_CACHE_DIR
+	? path.join(process.env.SABAKI_CACHE_DIR, "sabaki")
+	: path.join(os.homedir(), ".cache", "sabaki");
 
 /** Hardcoded fallbacks when `versions.json` is unreachable. */
 const FALLBACK_VERSIONS: Record<string, string> = {

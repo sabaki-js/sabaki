@@ -77,11 +77,23 @@ async function buildRouter() {
 
 	// Fallback generalist : /tmp persistant (warm) > env > download.
 	// Pas de generalist-multi sur Vercel (482 Mo) : mini latin seul.
+	// Le cache (versions.json + SHA) doit vivre sous /tmp : le home est en
+	// lecture seule sur Vercel (SABAKI_CACHE_DIR, cf. src/download.ts).
+	if (!process.env.SABAKI_CACHE_DIR) process.env.SABAKI_CACHE_DIR = os.tmpdir();
 	let generalistDir = process.env.SABAKI_GENERALIST_DIR;
 	let generalistModel = "sabaki-generalist";
 	if (!generalistDir && !process.env.SABAKI_OFFLINE) {
 		try {
-			const dir = path.join(os.tmpdir(), "sabaki-models", "generalist");
+			// /tmp : seul writable sur Vercel (home en lecture seule).
+			// Sous-dossier dédié : le /tmp Vercel peut contenir des fichiers
+			// pré-existants et mkdir recursive n'y est pas garanti.
+			const base = path.join(os.tmpdir(), "sabaki-models");
+			try {
+				await import("node:fs/promises").then((fs) => fs.mkdir(base, { recursive: true }));
+			} catch {
+				/* existe déjà */
+			}
+			const dir = path.join(base, "generalist");
 			generalistDir = await sabaki.ensureGeneralist(undefined, "generalist", { dir });
 			diag.generalist = `downloaded: ${generalistDir}`;
 		} catch (e) {
@@ -132,6 +144,7 @@ export default async function handler(req, res) {
 	}
 	if (req.method === "GET") {
 		// ?debug=1 : état du router (minis chargés ? generalist ? ort ?) — pas de secret.
+		// ?diag=1 (POST aussi) : idem dans la réponse.
 		try {
 			const u = new URL(req.url ?? "/", "http://x");
 			if (u.searchParams.get("debug") === "1") {
