@@ -1,0 +1,8 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "sabaki-routing",
+	"main": "src/index.js",
+	"compatibility_date": "2026-11-13",
+	"workers_dev": false,
+	"routes": [{ "pattern": "sabaki.fox3000foxy.com/*", "zone_name": "fox3000foxy.com" }]
+}
