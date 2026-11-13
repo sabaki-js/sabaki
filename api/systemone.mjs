@@ -9,24 +9,40 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 // dist/ est buildé par `vercel-build` (voir package.json).
 const sabaki = await import("../dist/index.js");
-const { Sabaki, miniClassifier, answerJev, validateJevQuestion } = sabaki;
+const { Sabaki, answerJev, validateJevQuestion } = sabaki;
 
 // --- Router (construit une fois par isolate, réutilisé entre invocations) ---
 let ready = null;
 
 // Imports statiques : le traceur Vercel ne suit pas les import() dynamiques
 // avec template literal -> les paquets @sabaki-js/* seraient exclus du bundle.
-import csPkg from "@sabaki-js/customer-service";
-import invPkg from "@sabaki-js/invoice-processing";
-import siPkg from "@sabaki-js/security-incidents";
-import atPkg from "@sabaki-js/agent-trace-observability";
-import mailPkg from "@sabaki-js/mail";
+import * as csMod from "@sabaki-js/customer-service";
+import * as invMod from "@sabaki-js/invoice-processing";
+import * as siMod from "@sabaki-js/security-incidents";
+import * as atMod from "@sabaki-js/agent-trace-observability";
+import * as mailMod from "@sabaki-js/mail";
 
-const BUNDLED = [csPkg, invPkg, siPkg, atPkg, mailPkg];
+const BUNDLED = [csMod, invMod, siMod, atMod, mailMod];
+// Nom du workflow = nom du dossier de poids (le manifest.domain peut différer,
+// ex: plugin mail historique). Tiré du modelDir embarqué, pas du manifest.
+function workflowOf(raw, plug) {
+	const md = raw.modelDir ?? plug.modelDir ?? "";
+	const m = md.match(/([^/]+)-int8\/?$/);
+	return m?.[1] ?? plug.manifest.domain;
+}
 
 async function buildRouter() {
 	const s = new Sabaki();
 	const sNano = new Sabaki();
+	const diag = { minis: {}, generalist: "none" };
+
+	// Diagnostic pre-onnx : le .node natif charge-t-il dans cet env ?
+	try {
+		const ort = await import("onnxruntime-node").then((m) => m.default ?? m);
+		diag.ort = "ok";
+	} catch (e) {
+		diag.ort = `FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
+	}
 
 	// 4 workflows historiques + mail (poids embarqués).
 	for (const raw of BUNDLED) {
@@ -35,12 +51,27 @@ async function buildRouter() {
 			const modelDir = raw.modelDir ?? plug.modelDir;
 			sNano.register(plug);
 			try {
-				s.register(await miniClassifier(plug.manifest, plug.manifest.domain, { modelDir }));
-			} catch {
+				const wf = workflowOf(raw, plug);
+				// modelDir embarqué = dossier complet : loadMini direct,
+				// sans repasser par ensureMiniModel (qui retéléchargerait).
+				const { loadMini } = sabaki;
+				const mini = await loadMini(modelDir);
+				const { definePlugin } = sabaki;
+				s.register(definePlugin({
+					manifest: { ...plug.manifest, modes: { ...plug.manifest.modes, active: "mini" } },
+					classify: async (input) => {
+						const q = input.question ?? plug.manifest.primary ?? plug.manifest.questions[0];
+						const r = await mini.run(input.state, q);
+						return { decision: r.decision, confidence: r.confidence, domain: plug.manifest.domain };
+					},
+				}));
+				diag.minis[plug.manifest.domain] = `mini (${wf})`;
+			} catch (e) {
 				s.register(plug); // repli nano (ex: onnxruntime absent)
+				diag.minis[plug.manifest.domain] = `nano (${String(e?.message ?? e).slice(0, 160)})`;
 			}
-		} catch {
-			/* paquet optionnel absent : routage seul */
+		} catch (e) {
+			diag.minis["?"] = `skip (${String(e?.message ?? e).slice(0, 120)})`;
 		}
 	}
 
@@ -52,9 +83,13 @@ async function buildRouter() {
 		try {
 			const dir = path.join(os.tmpdir(), "sabaki-models", "generalist");
 			generalistDir = await sabaki.ensureGeneralist(undefined, "generalist", { dir });
-		} catch {
+			diag.generalist = `downloaded: ${generalistDir}`;
+		} catch (e) {
 			generalistDir = undefined; // offline ou réseau HS : pas de fallback
+			diag.generalist = `download FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
 		}
+	} else if (generalistDir) {
+		diag.generalist = `env: ${generalistDir}`;
 	}
 	if (generalistDir) {
 		try {
@@ -72,11 +107,13 @@ async function buildRouter() {
 			});
 			s.setFallback(fb);
 			sNano.setFallback(fb);
-		} catch {
-			/* onnxruntime absent : pas de fallback */
+			diag.generalist += " + loaded";
+		} catch (e) {
+			diag.generalist += ` / load FAIL: ${String(e?.message ?? e).slice(0, 200)}`;
 		}
 	}
-	return { s, sNano, generalistModel };
+	console.log(`[sabaki] router ready ${JSON.stringify(diag).slice(0, 2000)}`);
+	return { s, sNano, generalistModel, diag };
 }
 
 function getRouter() {
@@ -94,6 +131,15 @@ export default async function handler(req, res) {
 		return;
 	}
 	if (req.method === "GET") {
+		// ?debug=1 : état du router (minis chargés ? generalist ? ort ?) — pas de secret.
+		try {
+			const u = new URL(req.url ?? "/", "http://x");
+			if (u.searchParams.get("debug") === "1") {
+				const r = await getRouter();
+				res.status(200).json({ status: "ok", diag: r.diag, generalistModel: r.generalistModel });
+				return;
+			}
+		} catch { /* ignore, health ci-dessous */ }
 		res.status(200).json({ status: "ok" });
 		return;
 	}
@@ -121,7 +167,7 @@ export default async function handler(req, res) {
 			res.status(422).json({ error: "mode: auto|nano|mini" });
 			return;
 		}
-		const { s, sNano, generalistModel } = await getRouter();
+		const { s, sNano, generalistModel, diag } = await getRouter();
 		const router = mode === "nano" ? sNano : s;
 		const answers = {};
 		const models = new Set();
@@ -144,6 +190,7 @@ export default async function handler(req, res) {
 			model: models.size === 1 ? [...models][0] : `sabaki-routed(${[...models].join(",")})`,
 			answers,
 			usage: { input_tokens: st.length >> 2, output_tokens: 0, latency_ms: Date.now() - t0 },
+			diag,
 		});
 	} catch (e) {
 		res.status(400).json({ error: String(e?.message ?? e) });
